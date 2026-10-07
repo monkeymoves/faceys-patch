@@ -49,7 +49,6 @@ export default defineConfig({
       registerType: 'autoUpdate',
       // An external registerSW.js script, so the strict CSP needs no inline scripts.
       injectRegister: 'script-defer',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: "Facey's Patch",
         short_name: "Facey's Patch",
