@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <title>Facey's Patch</title>
+  <!-- Full-bleed paper so it works as a maskable icon; the seedling stays inside the central 80%. -->
+  <rect width="512" height="512" fill="#F6F0E4"/>
+  <g transform="translate(0 14)">
+    <g transform="translate(9 9)">
+      <path fill="#C9A46E" d="M136 372C160 336 205 318 258 318C312 318 356 338 378 372C300 384 214 384 136 372Z"/>
+      <path fill="#6E9A4F" d="M252 252C228 200 180 168 132 174C128 222 178 258 252 252Z"/>
+      <path fill="#6E9A4F" d="M262 222C266 158 312 112 378 104C390 168 338 222 262 222Z"/>
+    </g>
+    <g fill="none" stroke="#2B2420" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M126 373C160 333 205 314 257 315C311 316 357 337 386 372"/>
+      <path d="M256 330C249 294 248 258 257 212"/>
+      <path d="M252 250C226 198 178 166 130 172C126 222 176 258 256 252"/>
+      <path d="M261 224C264 158 310 110 378 102C392 168 340 222 256 227"/>
+      <path stroke-width="9" d="M232 236C210 220 188 206 166 198"/>
+      <path stroke-width="9" d="M282 198C304 176 326 154 348 134"/>
+    </g>
+  </g>
+</svg>

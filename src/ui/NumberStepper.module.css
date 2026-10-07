@@ -1,0 +1,39 @@
+.field {
+  composes: field from './fields.module.css';
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.numberWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  composes: input from './fields.module.css';
+}
+
+.numberWrap .input {
+  width: 6.25rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-bold);
+}
+
+.numberWrap:has(.unit) .input {
+  padding-right: 2.4rem;
+  text-align: right;
+}
+
+.unit {
+  position: absolute;
+  right: var(--space-3);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}

@@ -1,0 +1,116 @@
+/* Phones: a sheet that rises from the bottom edge. */
+.sheet {
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - var(--space-6));
+  margin: auto 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sheet);
+  background-color: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow-sheet);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.sheet::backdrop {
+  background-color: var(--scrim);
+}
+
+.frame {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-3) var(--space-2) var(--space-5);
+}
+
+.title {
+  padding-top: var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.close {
+  margin-top: calc(var(--space-1) * -1);
+}
+
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-5) calc(var(--space-6) + env(safe-area-inset-bottom));
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5) calc(var(--space-4) + env(safe-area-inset-bottom));
+  border-top: var(--line-hair) solid var(--line);
+  background-color: var(--card);
+}
+
+.body:has(~ .footer) {
+  padding-bottom: var(--space-5);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sheet[open] {
+    animation: rise var(--duration-base) var(--ease-out);
+  }
+
+  .sheet[open]::backdrop {
+    animation: fade var(--duration-base) var(--ease-out);
+  }
+}
+
+@keyframes rise {
+  from {
+    translate: 0 32px;
+    opacity: 0.4;
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Wide screens: a centred dialog. */
+@media (min-width: 900px) {
+  .sheet {
+    width: min(560px, 100% - var(--space-8));
+    max-height: min(86dvh, 820px);
+    margin: auto;
+    border-radius: var(--radius-lg);
+  }
+
+  .header {
+    padding: var(--space-6) var(--space-4) var(--space-2) var(--space-6);
+  }
+
+  .body {
+    padding: var(--space-2) var(--space-6) var(--space-6);
+  }
+
+  .footer {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+    padding: var(--space-4) var(--space-6);
+  }
+
+  @keyframes rise {
+    from {
+      translate: 0 12px;
+      opacity: 0;
+    }
+  }
+}

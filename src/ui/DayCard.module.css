@@ -1,0 +1,141 @@
+.day {
+  display: grid;
+  grid-template-columns: 4.75rem 1fr auto;
+  align-items: start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-2) var(--space-3) var(--space-3);
+  border-radius: var(--radius-card);
+  border: var(--line-thin) solid var(--line);
+  background-color: var(--card);
+}
+
+.date {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  font-family: var(--font-body);
+  font-variation-settings: normal;
+  font-weight: var(--weight-regular);
+  line-height: 1;
+}
+
+.dayName {
+  font-family: var(--font-hand);
+  font-size: var(--text-hand);
+  font-weight: 600;
+  color: var(--ink-2);
+  line-height: 1.05;
+}
+
+.number {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 2.6rem;
+  height: 2.6rem;
+  margin-left: -0.35rem;
+  font-family: var(--font-display);
+  font-variation-settings: var(--display-axes);
+  font-weight: var(--weight-display);
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums lining-nums;
+  color: var(--ink);
+}
+
+.ring {
+  position: absolute;
+  inset: -0.3rem;
+  width: calc(100% + 0.6rem);
+  height: calc(100% + 0.6rem);
+  overflow: visible;
+  stroke: var(--marigold);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.today {
+  border-color: var(--marigold);
+}
+
+.today .dayName {
+  color: var(--marigold-deep);
+}
+
+.past {
+  background-color: transparent;
+}
+
+.past .number,
+.past .dayName {
+  color: var(--ink-2);
+}
+
+.meals {
+  min-width: 0;
+  padding-top: var(--space-1);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.meal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--space-2);
+  width: 100%;
+  min-height: var(--target-min);
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background-color: var(--paper-2);
+  color: var(--ink);
+  text-align: left;
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+}
+
+@media (hover: hover) {
+  .meal:hover {
+    background-color: var(--line);
+  }
+}
+
+.mealTitle {
+  min-width: 0;
+}
+
+.cooked {
+  background-color: var(--leaf-wash);
+}
+
+.cooked .mealTitle {
+  color: var(--ink-2);
+  text-decoration: line-through;
+  text-decoration-color: var(--ink-2);
+  text-decoration-thickness: 1.5px;
+}
+
+.cookedMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--leaf-deep);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.empty {
+  padding: var(--space-2) 0;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  min-height: var(--target-min);
+  display: flex;
+  align-items: center;
+}
+
+.add {
+  align-self: start;
+}

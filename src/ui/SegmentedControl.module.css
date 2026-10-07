@@ -1,0 +1,43 @@
+.group {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--radius-md);
+  background-color: var(--paper-2);
+  box-shadow: inset 0 0 0 var(--line-hair) var(--line);
+}
+
+.segment {
+  flex: 1 1 auto;
+  min-height: calc(var(--target-min) - 6px);
+  padding: var(--space-1) var(--space-4);
+  border: var(--line-thin) solid transparent;
+  border-radius: calc(var(--radius-md) - 3px);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition:
+    background-color var(--duration-quick) var(--ease-out),
+    color var(--duration-quick) var(--ease-out);
+}
+
+.checked {
+  background-color: var(--card);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+@media (hover: hover) {
+  .segment:not(.checked):hover {
+    color: var(--ink);
+  }
+}
+
+.segment:focus-visible {
+  outline-offset: 3px;
+}

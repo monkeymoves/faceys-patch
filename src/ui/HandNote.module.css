@@ -1,0 +1,40 @@
+.note {
+  display: inline-block;
+  font-family: var(--font-hand);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.md {
+  font-size: var(--text-hand);
+}
+
+.lg {
+  font-size: var(--text-hand-lg);
+}
+
+.pencil {
+  color: var(--ink-2);
+}
+
+.ink {
+  color: var(--ink);
+}
+
+.leaf {
+  color: var(--leaf);
+}
+
+.tomato {
+  color: var(--tomato-deep);
+}
+
+.tilt-left {
+  rotate: -4deg;
+}
+
+.tilt-right {
+  rotate: 3deg;
+}

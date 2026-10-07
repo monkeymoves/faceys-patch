@@ -1,0 +1,29 @@
+.card {
+  border-radius: var(--radius-card);
+  border: var(--line-thin) solid var(--line);
+}
+
+.raised {
+  background-color: var(--card);
+}
+
+.sunken {
+  background-color: var(--paper-2);
+  border-color: transparent;
+}
+
+.pad-none {
+  padding: 0;
+}
+
+.pad-sm {
+  padding: var(--space-3);
+}
+
+.pad-md {
+  padding: var(--space-4);
+}
+
+.pad-lg {
+  padding: var(--space-6);
+}

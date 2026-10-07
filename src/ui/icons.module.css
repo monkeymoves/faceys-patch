@@ -1,0 +1,5 @@
+.icon {
+  flex-shrink: 0;
+  overflow: visible;
+  stroke-width: var(--stroke-icon);
+}

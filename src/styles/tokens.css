@@ -1,0 +1,131 @@
+/*
+ * Design tokens for Facey's Patch. Every colour, size and duration lives here.
+ * Components use these through CSS Modules and never hard-code values.
+ * Palette names follow docs/DESIGN.md. Light theme only for v1; a future
+ * "night shed" theme only needs to redefine the colour block.
+ * ::backdrop is listed because older browsers don't let it inherit from :root.
+ */
+
+:root,
+::backdrop {
+  /* Paper and ink */
+  --paper: #f6f0e4;
+  --paper-2: #ede4d3;
+  --card: #fffdf8;
+  --ink: #2b2420;
+  --ink-2: #5f564d;
+  --line: #d9cdb8;
+  /* Control borders that must stay visible (3:1 on paper and paper-2) */
+  --line-strong: #857867;
+
+  /* The one green, plus a deeper shade for hover and pressed */
+  --leaf: #3f6f35;
+  --leaf-deep: #2f5a27;
+  --leaf-wash: #e3ebd3;
+
+  /* Tomato: glut, need to buy, destructive. Deep shade is for text on washes. */
+  --tomato: #c8482b;
+  --tomato-deep: #a63a20;
+  --tomato-wash: #f7dfd3;
+
+  /* Marigold: coming soon, today. Never used for text; deep shade is. */
+  --marigold: #e3a33a;
+  --marigold-deep: #8a5a12;
+  --marigold-wash: #f8eacb;
+
+  /* Text on solid leaf or tomato */
+  --on-solid: var(--card);
+
+  /* Overlays */
+  --scrim: color-mix(in srgb, var(--ink) 42%, transparent);
+  --shadow-sheet: 0 -1px 0 color-mix(in srgb, var(--ink) 6%, transparent),
+    0 18px 48px -8px color-mix(in srgb, var(--ink) 30%, transparent);
+
+  /* Very faint paper grain: an alpha-only noise tile, nothing to download. */
+  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .17 0 0 0 0 .14 0 0 0 0 .12 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.09'/%3E%3C/svg%3E");
+
+  /* Type families */
+  --font-display: 'Fraunces Variable', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Atkinson Hyperlegible Next Variable', 'Atkinson Hyperlegible', Verdana, sans-serif;
+  --font-hand: 'Caveat Variable', 'Bradley Hand', 'Segoe Print', cursive;
+  --display-axes: 'SOFT' 100, 'WONK' 1;
+
+  /* Type scale (body is 17px) */
+  --text-xs: 0.8125rem; /* 13px: tab labels only */
+  --text-sm: 0.9375rem; /* 15px: meta, hints */
+  --text-base: 1.0625rem; /* 17px: body and controls */
+  --text-md: 1.1875rem; /* 19px: card titles */
+  --text-lg: 1.375rem; /* 22px: sheet titles */
+  --text-xl: 1.75rem; /* 28px: screen titles on phones */
+  --text-2xl: 2.25rem; /* 36px: screen titles on wide screens */
+  --text-3xl: 3rem; /* 48px: display */
+  --text-hand: 1.375rem; /* 22px: Caveat notes, never smaller than 20px */
+  --text-hand-lg: 1.75rem; /* 28px: Caveat day names */
+
+  --leading-tight: 1.12;
+  --leading-snug: 1.3;
+  --leading-body: 1.5;
+
+  --weight-regular: 400;
+  --weight-medium: 550;
+  --weight-bold: 680;
+  --weight-display: 640;
+
+  /* Spacing (4px steps) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 2rem;
+  --space-8: 2.5rem;
+  --space-9: 3.5rem;
+  --space-10: 4.5rem;
+
+  /* Radii. The hand-cut ones are slightly uneven on purpose. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --radius-card: 14px 11px 15px 12px / 12px 15px 11px 14px;
+  --radius-wonky: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  --radius-pebble: 16px 22px 18px 24px / 22px 16px 24px 18px;
+  --radius-sheet: 22px 20px 0 0 / 20px 22px 0 0;
+
+  /* Line weights */
+  --line-hair: 1px;
+  --line-thin: 1.5px;
+  --line-ink: 2px;
+  --stroke-icon: 1.75;
+  --stroke-art: 2.25;
+  --focus-width: 2.5px;
+  --focus-offset: 2px;
+
+  /* Sizes */
+  --target-min: 44px;
+  --control-sm: 44px;
+  --control-md: 48px;
+  --control-lg: 56px;
+  --icon-sm: 18px;
+  --icon-md: 24px;
+  --content-max: 640px;
+  --header-height: 60px;
+  --tabbar-height: 66px;
+  --wide-breakpoint: 900px; /* reference only: media queries cannot read it */
+
+  /* Motion */
+  --duration-quick: 150ms;
+  --duration-base: 200ms;
+  --duration-draw: 320ms;
+  --ease-out: cubic-bezier(0.22, 0.8, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.45, 0, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-quick: 0ms;
+    --duration-base: 0ms;
+    --duration-draw: 0ms;
+  }
+}

@@ -1,0 +1,78 @@
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--font-display);
+  font-variation-settings: var(--display-axes);
+  font-optical-sizing: auto;
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.sprout {
+  width: 0.39em;
+  height: 0.56em;
+  margin: 0 -0.09em 0 -0.07em;
+  align-self: flex-start;
+  translate: 0 0.01em;
+  overflow: visible;
+}
+
+.leafFill {
+  fill: var(--leaf);
+}
+
+.leafLine {
+  display: none;
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+}
+
+.stem {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.7;
+  stroke-linecap: round;
+}
+
+.sm {
+  font-size: 1.25rem;
+}
+
+.md {
+  font-size: 1.625rem;
+}
+
+.lg {
+  font-size: 2.5rem;
+}
+
+.xl {
+  font-size: clamp(2.5rem, 13vw, 4rem);
+}
+
+/* Small sizes: a slightly bigger seedling so the leaves still read. */
+.sm .sprout,
+.md .sprout {
+  width: 0.43em;
+  height: 0.62em;
+  margin: 0 -0.1em 0 -0.08em;
+  translate: 0 -0.03em;
+}
+
+/* Large sizes: the two-colour print look, fill a touch off-register under an ink line. */
+.lg .leafFill,
+.xl .leafFill {
+  fill: var(--leaf);
+  opacity: 0.8;
+  translate: 0.7px 0.7px;
+}
+
+.lg .leafLine,
+.xl .leafLine {
+  display: inline;
+}

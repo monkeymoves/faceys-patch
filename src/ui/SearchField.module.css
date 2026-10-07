@@ -1,0 +1,37 @@
+.field {
+  composes: field from './fields.module.css';
+}
+
+.label {
+  composes: label from './fields.module.css';
+}
+
+.control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.icon {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--ink-2);
+  pointer-events: none;
+}
+
+.input {
+  composes: input from './fields.module.css';
+  padding-left: calc(var(--space-3) + 22px + var(--space-2));
+  padding-right: var(--control-sm);
+  appearance: none;
+}
+
+.input::-webkit-search-cancel-button,
+.input::-webkit-search-decoration {
+  appearance: none;
+}
+
+.clear {
+  position: absolute;
+  right: 2px;
+}

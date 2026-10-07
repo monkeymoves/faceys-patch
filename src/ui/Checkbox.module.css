@@ -1,0 +1,83 @@
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: var(--target-min);
+  padding-block: var(--space-2);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.boxWrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.input {
+  position: absolute;
+  inset: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.box {
+  width: 28px;
+  height: 28px;
+  overflow: visible;
+  stroke: var(--ink);
+  stroke-width: var(--stroke-icon);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.tick {
+  stroke: var(--leaf);
+  stroke-width: 2.6;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset var(--duration-draw) var(--ease-out);
+}
+
+.input:checked + .box .tick {
+  stroke-dashoffset: 0;
+}
+
+.input:focus-visible + .box {
+  outline: var(--focus-width) solid var(--ink);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.input:disabled + .box {
+  opacity: 0.45;
+}
+
+.text {
+  display: grid;
+  gap: 2px;
+  padding-top: 2px;
+  min-width: 0;
+}
+
+.label {
+  line-height: var(--leading-snug);
+}
+
+.hint {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.struck .label {
+  color: var(--ink-2);
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--ink-2);
+}

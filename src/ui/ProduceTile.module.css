@@ -1,0 +1,77 @@
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 148px;
+  padding: var(--space-4) var(--space-2) var(--space-3);
+  border: var(--line-thin) solid var(--line);
+  border-radius: var(--radius-card);
+  background-color: var(--card);
+  color: var(--ink);
+  text-align: center;
+  touch-action: manipulation;
+  transition:
+    border-color var(--duration-quick) var(--ease-out),
+    translate var(--duration-quick) var(--ease-out);
+}
+
+.tile:active {
+  translate: 0 1px;
+}
+
+@media (hover: hover) {
+  .tile:hover {
+    border-color: var(--line-strong);
+  }
+}
+
+.art {
+  display: grid;
+  place-items: center;
+  margin-bottom: var(--space-2);
+  color: var(--ink);
+}
+
+.name {
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 45% 55% 50% 50%;
+  background-color: var(--leaf);
+}
+
+.soon {
+  background-color: transparent;
+  border-style: dashed;
+  border-color: var(--line-strong);
+}
+
+.soon .dot {
+  background-color: var(--marigold);
+}
+
+.soon .art {
+  opacity: 0.78;
+}
+
+.glut {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+}

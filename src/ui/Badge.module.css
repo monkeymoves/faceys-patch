@@ -1,0 +1,48 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px var(--space-2) 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  white-space: nowrap;
+}
+
+.icon {
+  stroke-width: 2;
+}
+
+.ready {
+  background-color: var(--leaf-wash);
+  color: var(--leaf-deep);
+}
+
+.nearly {
+  background-color: var(--marigold-wash);
+  color: var(--ink);
+}
+
+.nearly .icon {
+  color: var(--marigold-deep);
+}
+
+.shop {
+  background-color: var(--tomato-wash);
+  color: var(--tomato-deep);
+}
+
+.soon {
+  background-color: var(--marigold-wash);
+  color: var(--ink);
+}
+
+.soon .icon {
+  color: var(--marigold-deep);
+}
+
+.glut {
+  background-color: var(--tomato-wash);
+  color: var(--tomato-deep);
+}

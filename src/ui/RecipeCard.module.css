@@ -1,0 +1,113 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-4) var(--space-4) var(--space-4);
+  border: var(--line-thin) solid var(--line);
+  border-radius: var(--radius-card);
+  background-color: var(--card);
+  color: var(--ink);
+  text-align: left;
+  touch-action: manipulation;
+  transition:
+    border-color var(--duration-quick) var(--ease-out),
+    translate var(--duration-quick) var(--ease-out);
+}
+
+.card:active {
+  translate: 0 1px;
+}
+
+@media (hover: hover) {
+  .card:hover {
+    border-color: var(--line-strong);
+  }
+}
+
+.veg {
+  display: flex;
+  align-items: flex-end;
+  padding-left: 2px;
+}
+
+.vegArt + .vegArt {
+  margin-left: -10px;
+}
+
+.note {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-variation-settings: var(--display-axes);
+  font-optical-sizing: auto;
+  font-weight: var(--weight-display);
+  font-size: var(--text-md);
+  line-height: var(--leading-tight);
+  text-wrap: balance;
+}
+
+.details {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.readiness {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: var(--line-hair) dashed var(--line);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+}
+
+.readyIcon {
+  margin-top: -1px;
+  stroke-width: 2.1;
+}
+
+.ready {
+  color: var(--leaf-deep);
+}
+
+.ready .readyIcon {
+  color: var(--leaf);
+}
+
+.need {
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+}
+
+.need .readyIcon {
+  color: var(--tomato);
+}
+
+.missing {
+  font-weight: var(--weight-bold);
+  color: var(--tomato-deep);
+}

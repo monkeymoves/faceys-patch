@@ -1,0 +1,15 @@
+.message {
+  color: var(--ink-2);
+  max-width: 46ch;
+}
+
+.button {
+  width: 100%;
+}
+
+@media (min-width: 900px) {
+  .button {
+    width: auto;
+    min-width: 8rem;
+  }
+}
