@@ -1,0 +1,118 @@
+/* Larder screen. */
+
+.section {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-7);
+}
+
+.heading {
+  font-size: var(--text-md);
+}
+
+.note {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.aisle {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.aisleHeading {
+  color: var(--ink-2);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-variation-settings: normal;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.search {
+  margin-top: var(--space-1);
+}
+
+/* Browse by aisle: native disclosure, drawn to match. */
+
+.browse {
+  margin-top: var(--space-3);
+}
+
+.subheading {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-base);
+}
+
+.details {
+  border-top: var(--line-hair) solid var(--line);
+}
+
+.details:last-child {
+  border-bottom: var(--line-hair) solid var(--line);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--control-md);
+  padding: var(--space-2) var(--space-1);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  list-style: none;
+  touch-action: manipulation;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.chevron {
+  color: var(--ink-2);
+  transition: rotate var(--duration-quick) var(--ease-out);
+}
+
+.details[open] > .summary .chevron {
+  rotate: 90deg;
+}
+
+@media (hover: hover) {
+  .summary:hover .chevron {
+    color: var(--ink);
+  }
+}
+
+.details > .chips {
+  padding: var(--space-1) 0 var(--space-4);
+}
+
+/* Not on the list? */
+
+.newForm {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.newSubmit {
+  justify-self: start;
+}
+
+@media (min-width: 560px) {
+  .newForm {
+    grid-template-columns: 1fr 14rem;
+    align-items: start;
+  }
+
+  .newSubmit {
+    grid-column: 1 / -1;
+  }
+}

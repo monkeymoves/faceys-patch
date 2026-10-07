@@ -32,3 +32,18 @@ describe('App shell', () => {
     expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument()
   })
 })
+
+describe('focus on tab change', () => {
+  afterEach(() => {
+    window.location.hash = ''
+  })
+
+  it('leaves focus alone on first load, then moves it to the new screen', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    expect(document.activeElement).toBe(document.body)
+
+    await user.click(screen.getByRole('button', { name: 'Larder' }))
+    expect(document.activeElement).toBe(screen.getByRole('main'))
+  })
+})

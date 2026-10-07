@@ -1,0 +1,51 @@
+/* Shop screen. */
+
+.weekBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.weekName {
+  color: var(--ink-2);
+  font-weight: var(--weight-bold);
+  text-align: center;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.aisleHeading {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-md);
+}
+
+.item {
+  border-bottom: var(--line-hair) dashed var(--line);
+}
+
+.item:last-child {
+  border-bottom: 0;
+}
+
+.actions {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-7);
+}
+
+@media (min-width: 560px) {
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+  }
+}
+
+.message {
+  margin-top: var(--space-4);
+}

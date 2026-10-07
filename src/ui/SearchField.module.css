@@ -21,9 +21,13 @@
 
 .input {
   composes: input from './fields.module.css';
+  appearance: none;
+}
+
+/* Scoped under .control so these win over the shared padding whichever stylesheet loads last. */
+.control .input {
   padding-left: calc(var(--space-3) + 22px + var(--space-2));
   padding-right: var(--control-sm);
-  appearance: none;
 }
 
 .input::-webkit-search-cancel-button,

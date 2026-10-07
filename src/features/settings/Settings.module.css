@@ -1,0 +1,48 @@
+/* Settings sheet. */
+
+.settings {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.lede {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  background-color: var(--paper-2);
+}
+
+.section {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: var(--line-hair) dashed var(--line);
+}
+
+.heading {
+  font-size: var(--text-md);
+}
+
+.text {
+  color: var(--ink-2);
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+}
+
+.steps li::marker {
+  color: var(--ink-2);
+}
+
+.confirmText {
+  display: grid;
+  gap: var(--space-2);
+}

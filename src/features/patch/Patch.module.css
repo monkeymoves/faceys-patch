@@ -1,0 +1,130 @@
+/* Patch screen, its crop sheet and the Add picker. */
+
+.group {
+  margin-top: var(--space-6);
+}
+
+.groupHeading {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-md);
+}
+
+.groupNote {
+  margin: calc(var(--space-2) * -1) 0 var(--space-3);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (min-width: 560px) {
+  .tileGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.cookLink {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-7);
+}
+
+/* Crop sheet */
+
+.crop {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.cropArt {
+  display: grid;
+  place-items: center;
+  padding-block: var(--space-2);
+  color: var(--ink);
+}
+
+.fullSegments {
+  display: flex;
+  width: 100%;
+}
+
+.cropActions {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: var(--line-hair) dashed var(--line);
+}
+
+/* Add picker */
+
+.picker {
+  display: grid;
+  gap: var(--space-5);
+}
+
+/* Search and "Adding as" stay in reach while the list scrolls under them. */
+.pickerTop {
+  position: sticky;
+  /* Up over the sheet body's top padding, so nothing peeks out above it. */
+  top: calc(var(--space-2) * -1);
+  z-index: 1;
+  display: grid;
+  gap: var(--space-4);
+  margin-top: calc(var(--space-2) * -1);
+  padding-block: var(--space-3) var(--space-4);
+  border-bottom: var(--line-hair) solid var(--line);
+  background-color: var(--card);
+}
+
+.addingAs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.addingAsLabel {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.pickerGroup {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pickerHeading {
+  font-size: var(--text-base);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.nothingFound {
+  color: var(--ink-2);
+}
+
+.newCrop {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: var(--line-hair) dashed var(--line);
+}
+
+.newCropForm {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
+.newCropForm > :first-child {
+  width: 100%;
+}

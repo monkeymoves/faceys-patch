@@ -39,15 +39,14 @@ function Shell() {
   const { route, go } = useNavigation()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const main = useRef<HTMLElement>(null)
-  const firstRender = useRef(true)
+  const shownTab = useRef(route.tab)
 
-  // On a tab change, start at the top and move focus to the new screen so
-  // screen reader and keyboard users land in the right place.
+  // On a tab change (not on first load), start at the top and move focus to
+  // the new screen so screen reader and keyboard users land in the right place.
+  // Comparing tabs rather than counting renders survives StrictMode's double effects.
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false
-      return
-    }
+    if (shownTab.current === route.tab) return
+    shownTab.current = route.tab
     window.scrollTo(0, 0)
     main.current?.focus()
   }, [route.tab])
