@@ -81,8 +81,8 @@ For each recipe:
 - `score`, higher is better:
   - each `fromPatch` item: 3 if status `ready`, 1.5 if `soon`; doubled if glut;
     halved if the ingredient is optional in this recipe
-  - minus 1.5 per missing ingredient
-  - plus 2 if readiness is `ready`
+  - minus 2 per missing ingredient
+  - plus 3 if readiness is `ready`
 - Sort by score descending, then title A to Z (deterministic).
 
 ### My recipes and ingredients
@@ -106,6 +106,8 @@ Fills the given empty dates, in date order, one meal per date:
 
 - Candidates are matches, best score first. A recipe already planned in
   that week (or chosen earlier in this run) is not picked again.
+- Only dinners are planned: candidates must have a course in
+  `PLANNABLE_COURSES` (`main`, `soup`). Matching itself still returns every course.
 - Variety: after a patch ingredient has been used by a chosen recipe this
   week, that ingredient's contribution to further candidates is halved for
   each prior use, unless it is a glut, where the first two uses are free.

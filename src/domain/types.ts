@@ -111,9 +111,13 @@ export interface RecipeIngredient {
   prep?: string
 }
 
-export type Diet = 'vegetarian' | 'vegan'
+export const DIETS = ['vegetarian', 'vegan'] as const
 
-export type Course = 'main' | 'side' | 'soup' | 'salad' | 'pudding' | 'preserve' | 'bake'
+export type Diet = (typeof DIETS)[number]
+
+export const COURSES = ['main', 'soup', 'salad', 'side', 'pudding', 'bake', 'preserve'] as const
+
+export type Course = (typeof COURSES)[number]
 
 export interface Recipe {
   id: RecipeId
@@ -140,7 +144,9 @@ export interface Catalogue {
 // ---------------------------------------------------------------------------
 
 /** 'ready' = picked or ready to pick now. 'soon' = ready within the next week. */
-export type HarvestStatus = 'ready' | 'soon'
+export const HARVEST_STATUSES = ['ready', 'soon'] as const
+
+export type HarvestStatus = (typeof HARVEST_STATUSES)[number]
 
 /** One entry per crop: ingredientId is unique within AppState.harvest. */
 export interface HarvestItem {
