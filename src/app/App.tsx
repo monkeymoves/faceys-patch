@@ -39,11 +39,34 @@ export function App() {
   )
 }
 
+const TITLES: Record<MainTabId, string> = {
+  patch: "What's ready",
+  larder: 'Larder',
+  cook: 'What to cook',
+  week: 'Week',
+  shop: 'Shopping list',
+}
+
+/** Focus the screen's title, so a screen reader announces where the person has landed. */
+function focusScreen(main: HTMLElement | null) {
+  const heading = main?.querySelector('h1')
+  if (heading) {
+    heading.tabIndex = -1
+    heading.focus()
+  } else {
+    main?.focus()
+  }
+}
+
 function Shell() {
   const { route, go } = useNavigation()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const main = useRef<HTMLElement>(null)
   const shownTab = useRef(route.tab)
+
+  useEffect(() => {
+    document.title = `${TITLES[route.tab]} | Facey's Patch`
+  }, [route.tab])
 
   // On a tab change (not on first load), start at the top and move focus to
   // the new screen so screen reader and keyboard users land in the right place.
@@ -52,12 +75,16 @@ function Shell() {
     if (shownTab.current === route.tab) return
     shownTab.current = route.tab
     window.scrollTo(0, 0)
-    main.current?.focus()
+    focusScreen(main.current)
   }, [route.tab])
 
   const Screen = SCREENS[route.tab]
   return (
     <>
+      {/* The tab bar comes first in the page, so keyboard users can jump past it. */}
+      <button type="button" className={styles.skip} onClick={() => focusScreen(main.current)}>
+        Skip to content
+      </button>
       <AppHeader
         nav={<TabBar tabs={MAIN_TABS} active={route.tab} onSelect={(tab) => go({ tab })} />}
         actions={<IconButton icon="settings" label="Settings" onClick={() => setSettingsOpen(true)} />}

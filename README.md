@@ -22,6 +22,10 @@ load it on another phone.
 Open the site, then on iPhone tap **Share**, then **Add to Home Screen**; on
 Android, open the Chrome menu and tap **Install app**. It works offline.
 
+On iPhone this matters more than it looks: Safari can clear a website's saved
+data if you haven't visited for a week or so, but apps added to the Home Screen
+keep theirs. Either way, download a backup from Settings now and then.
+
 ## Development
 
 Needs Node 24.

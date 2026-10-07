@@ -22,7 +22,7 @@ describe('App shell', () => {
   it('tells the person when saved data could not be read', () => {
     localStorage.setItem(STORAGE_KEY, '{broken')
     render(<App />)
-    expect(screen.getByRole('alert')).toHaveTextContent("We couldn't read your saved patch")
+    expect(screen.getByRole('alert')).toHaveTextContent("Your saved patch couldn't be read")
   })
 
   it('opens settings from the header', async () => {
@@ -38,12 +38,22 @@ describe('focus on tab change', () => {
     window.location.hash = ''
   })
 
-  it('leaves focus alone on first load, then moves it to the new screen', async () => {
+  it("leaves focus alone on first load, then moves it to the new screen's title", async () => {
     const user = userEvent.setup()
     render(<App />)
     expect(document.activeElement).toBe(document.body)
 
     await user.click(screen.getByRole('button', { name: 'Larder' }))
-    expect(document.activeElement).toBe(screen.getByRole('main'))
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }))
+    expect(document.title).toBe("Larder | Facey's Patch")
+  })
+
+  it('lets keyboard users skip past the tabs to the screen', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.tab()
+    expect(screen.getByRole('button', { name: 'Skip to content' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }))
   })
 })

@@ -6,11 +6,11 @@ import { useStore, type StorageProblem } from './useStore'
 
 const MESSAGES: Record<StorageProblem, { title: string; text: string }> = {
   'recovered-corrupt': {
-    title: "We couldn't read your saved patch",
-    text: "So we've started afresh. A copy of the old data is kept on this device, and you can download it.",
+    title: "Your saved patch couldn't be read",
+    text: 'So the app has started afresh. A copy of the old data is kept on this device, and you can download it.',
   },
   'storage-unavailable': {
-    title: "This browser isn't letting us save",
+    title: "This browser won't save your changes",
     text: "You can carry on, but changes will be lost when you close the app. Private browsing often causes this.",
   },
   'save-quota': {
