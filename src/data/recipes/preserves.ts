@@ -15,8 +15,8 @@ export const PRESERVES: readonly Recipe[] = [
       { id: 'malt-vinegar', amount: '500ml' },
       { id: 'brown-sugar', amount: '300g' },
       { id: 'sultanas', amount: '100g' },
-      { id: 'mustard-seed', amount: '1 tbsp' },
-      { id: 'turmeric', amount: '1 tsp' },
+      { id: 'mustard-seed', amount: '1 tbsp', optional: true },
+      { id: 'turmeric', amount: '1 tsp', optional: true },
       { id: 'salt', amount: '2 tbsp' },
     ],
     steps: [
@@ -40,7 +40,7 @@ export const PRESERVES: readonly Recipe[] = [
       { id: 'beetroot', amount: 'about 1kg, small ones', prep: 'scrubbed, tops trimmed to 2cm' },
       { id: 'cider-vinegar', amount: '500ml' },
       { id: 'caster-sugar', amount: '150g' },
-      { id: 'pickling-spice', amount: '2 tbsp' },
+      { id: 'pickling-spice', amount: '2 tbsp', optional: true },
       { id: 'water', amount: '200ml' },
       { id: 'salt', amount: '1 tsp' },
     ],
@@ -91,7 +91,7 @@ export const PRESERVES: readonly Recipe[] = [
       { id: 'raspberry', amount: '800g' },
       { id: 'redcurrant', amount: '200g', prep: 'stripped from their stalks' },
       { id: 'jam-sugar', amount: '1kg' },
-      { id: 'lemon', amount: '1/2', prep: 'juiced' },
+      { id: 'lemon', amount: '1/2', optional: true, prep: 'juiced' },
       { id: 'water', amount: '50ml' },
     ],
     steps: [
@@ -139,7 +139,7 @@ export const PRESERVES: readonly Recipe[] = [
       { id: 'blackberry', amount: '500g' },
       { id: 'apple', amount: 'about 500g cooking apples', prep: 'peeled, cored and chopped' },
       { id: 'jam-sugar', amount: '800g' },
-      { id: 'lemon', amount: '1', prep: 'juiced' },
+      { id: 'lemon', amount: '1', optional: true, prep: 'juiced' },
       { id: 'water', amount: '100ml' },
     ],
     steps: [

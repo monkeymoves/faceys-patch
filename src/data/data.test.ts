@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { AISLES, ART_KEYS, type Course } from '../domain/types'
+import { AISLES, ART_KEYS, COURSES, DIETS } from '../domain/types'
 import { CATALOGUE, INGREDIENTS, RECIPES, STARTER_LARDER } from './index'
 
 const KEBAB_CASE = /^[a-z0-9]+(-[a-z0-9]+)*$/
 // The owner's house style forbids the em dash (U+2014) and the en dash (U+2013).
 const FORBIDDEN_DASH = /[\u2013\u2014]/
-const COURSES: readonly Course[] = ['main', 'side', 'soup', 'salad', 'pudding', 'preserve', 'bake']
 const ASSUMED_IDS = ['salt', 'black-pepper', 'water']
 
 const ingredientsById = CATALOGUE.ingredients
@@ -25,12 +24,7 @@ function isGrowable(id: string): boolean {
   return ingredientsById.get(id)?.growable === true
 }
 
-/** Things that come from an animal but sit in an aisle other than 'meat-fish'. */
-const MEAT_FISH_EXTRAS = ['chicken-stock']
-const MEAT_FISH_IDS = new Set([
-  ...INGREDIENTS.filter((i) => i.aisle === 'meat-fish').map((i) => i.id),
-  ...MEAT_FISH_EXTRAS,
-])
+const MEAT_FISH_IDS = new Set(INGREDIENTS.filter((i) => i.aisle === 'meat-fish').map((i) => i.id))
 const DAIRY_EGG_IDS = new Set(INGREDIENTS.filter((i) => i.aisle === 'dairy-eggs').map((i) => i.id))
 const NOT_VEGAN_EXTRAS = ['honey']
 
@@ -94,6 +88,26 @@ describe('ingredients', () => {
 
   it('never marks a growable ingredient as assumed', () => {
     expect(INGREDIENTS.filter((i) => i.growable && i.assumed).map((i) => i.id)).toEqual([])
+  })
+
+  it('does not split interchangeable variants into separate ingredients', () => {
+    // A cook with pasta in the larder should never be told to buy spaghetti. Use the
+    // single entry and put the shape or variant in the recipe amount instead.
+    const SPLIT_VARIANTS: Record<string, string> = {
+      spaghetti: 'pasta',
+      penne: 'pasta',
+      linguine: 'pasta',
+      tagliatelle: 'pasta',
+      rigatoni: 'pasta',
+      orecchiette: 'pasta',
+      'chicken-stock': 'vegetable-stock',
+      'cannellini-beans': 'white-beans',
+      'butter-beans': 'white-beans',
+    }
+    const offenders = INGREDIENTS.filter((i) => i.id in SPLIT_VARIANTS).map(
+      (i) => `${i.id} (use ${SPLIT_VARIANTS[i.id]})`,
+    )
+    expect(offenders, 'ingredients that duplicate another one').toEqual([])
   })
 })
 
@@ -180,6 +194,14 @@ describe('recipes', () => {
     expect(underused, 'growable ingredients used in fewer than 2 recipes').toEqual([])
   })
 
+  it('has every growable vegetable and fruit as a required ingredient somewhere, not only a garnish', () => {
+    const required = new Set(RECIPES.flatMap((r) => r.ingredients.filter((i) => !i.optional).map((i) => i.id)))
+    const garnishOnly = INGREDIENTS.filter((i) => i.growable && i.aisle !== 'herbs' && !required.has(i.id)).map(
+      (i) => i.id,
+    )
+    expect(garnishOnly, 'growable veg or fruit that is only ever optional').toEqual([])
+  })
+
   it.each([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])('has at least 8 recipes in season in month %i', (month) => {
     const inSeason = RECIPES.filter((recipe) =>
       recipe.ingredients.some((i) => ingredientsById.get(i.id)?.harvestMonths?.includes(month)),
@@ -199,7 +221,7 @@ describe('diet tags', () => {
   it('only ever uses known diet tags, once each', () => {
     const bad = RECIPES.filter(
       (r) =>
-        r.diet.some((d) => d !== 'vegan' && d !== 'vegetarian') || new Set(r.diet).size !== r.diet.length,
+        r.diet.some((d) => !DIETS.includes(d)) || new Set(r.diet).size !== r.diet.length,
     ).map((r) => r.id)
     expect(bad).toEqual([])
   })
