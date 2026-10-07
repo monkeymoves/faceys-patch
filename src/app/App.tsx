@@ -11,7 +11,9 @@ import { MAIN_TABS, TabBar, type MainTabId } from '../ui/TabBar'
 import styles from './App.module.css'
 import { NavigationProvider } from './navigation'
 import { useNavigation } from './useNavigation'
+import { ErrorBoundary } from './ErrorBoundary'
 import { StorageNotice } from './StorageNotice'
+import { UpdateNotice } from './UpdateNotice'
 import { StoreProvider } from './store'
 import { ViewedWeekProvider } from './viewedWeek'
 
@@ -25,13 +27,15 @@ const SCREENS: Record<MainTabId, ComponentType> = {
 
 export function App() {
   return (
-    <StoreProvider>
-      <NavigationProvider>
-        <ViewedWeekProvider>
-          <Shell />
-        </ViewedWeekProvider>
-      </NavigationProvider>
-    </StoreProvider>
+    <ErrorBoundary>
+      <StoreProvider>
+        <NavigationProvider>
+          <ViewedWeekProvider>
+            <Shell />
+          </ViewedWeekProvider>
+        </NavigationProvider>
+      </StoreProvider>
+    </ErrorBoundary>
   )
 }
 
@@ -61,6 +65,7 @@ function Shell() {
       <main ref={main} tabIndex={-1} className={styles.main}>
         <div className={styles.notice}>
           <StorageNotice />
+          <UpdateNotice />
         </div>
         <Screen />
       </main>

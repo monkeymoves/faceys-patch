@@ -1,26 +1,12 @@
+import { downloadFile } from '../../app/download'
 import { serializeBackup, toISODate, type AppState } from '../../domain'
 
 /** 'faceys-patch-backup-2026-10-07.json', dated by the local calendar. */
 export const backupFileName = (now: Date) => `faceys-patch-backup-${toISODate(now)}.json`
 
-/**
- * Saves the state as a JSON file through a temporary object URL. The URL is
- * revoked once the browser has had a moment to start the download.
- */
+/** Saves the state as a JSON backup file named for today. */
 export function downloadBackup(state: AppState, now: Date): void {
-  const blob = new Blob([serializeBackup(state, now)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = backupFileName(now)
-  link.hidden = true
-  document.body.append(link)
-  try {
-    link.click()
-  } finally {
-    link.remove()
-    window.setTimeout(() => URL.revokeObjectURL(url))
-  }
+  downloadFile(backupFileName(now), serializeBackup(state, now))
 }
 
 const count = (n: number, one: string, many: string, none: string) =>

@@ -11,6 +11,8 @@ export interface Store {
   catalogue: Catalogue
   problem: StorageProblem | undefined
   dismissProblem: () => void
+  /** After unreadable data was set aside on load: reads that kept copy, for downloading. */
+  readCorruptCopy: (() => string | null) | undefined
 }
 
 export const StoreContext = createContext<Store | null>(null)

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { appStateSchema } from './schema'
+import { appStateSchema, isValidState } from './schema'
+import { initialState } from './state'
 import { makeRecipe, makeState, ready } from './test-fixtures'
 import type { Ingredient, Recipe } from './types'
 
@@ -99,7 +100,7 @@ describe('appStateSchema: my recipes (SPEC: storage caps)', () => {
     ['an empty blurb', { blurb: '' }],
     ['a blurb of 200 characters', { blurb: 'x'.repeat(200) }],
     ['30 steps of 600 characters', { steps: repeat(30, () => 'x'.repeat(600)) }],
-    ['30 ingredients', { ingredients: repeat(30, (i) => ({ id: `item-${i}`, amount: 'x'.repeat(40), prep: 'x'.repeat(40) })) }],
+    ['30 ingredients', { ingredients: repeat(30, (i) => ({ id: `item-${i}`, amount: 'x'.repeat(80), prep: 'x'.repeat(80) })) }],
     ['no diet at all (meat or fish)', { diet: [] }],
   ])('accepts %s', (_label, overrides) => {
     expect(valid(withRecipe(overrides))).toBe(true)
@@ -114,8 +115,8 @@ describe('appStateSchema: my recipes (SPEC: storage caps)', () => {
     ['a step over 600 characters', { steps: ['x'.repeat(601)] }],
     ['over 30 steps', { steps: repeat(31, () => 'Stir.') }],
     ['over 30 ingredients', { ingredients: repeat(31, (i) => ({ id: `item-${i}`, amount: '1' })) }],
-    ['an amount over 40 characters', { ingredients: [{ id: 'courgette', amount: 'x'.repeat(41) }] }],
-    ['prep over 40 characters', { ingredients: [{ id: 'courgette', amount: '1', prep: 'x'.repeat(41) }] }],
+    ['an amount over 80 characters', { ingredients: [{ id: 'courgette', amount: 'x'.repeat(81) }] }],
+    ['prep over 80 characters', { ingredients: [{ id: 'courgette', amount: '1', prep: 'x'.repeat(81) }] }],
     ['an unknown course', { course: 'starter' as Recipe['course'] }],
     ['an unknown diet', { diet: ['pescatarian' as Recipe['diet'][number]] }],
     ['fractional minutes', { minutes: 2.5 }],
@@ -169,5 +170,17 @@ describe('appStateSchema: my ingredients (SPEC: storage caps)', () => {
 
   it('rejects two ingredients with the same id', () => {
     expect(valid({ ...fullState, myIngredients: [myIngredient(), myIngredient()] })).toBe(false)
+  })
+})
+
+describe('ids', () => {
+  it.each(['courgette', 'my-nans-chutney-k3x9q', 'meal-0b6c1e2a-7f1d-4c55-9a4e-2f7f0c1d9e88'])('accepts %s', (value) => {
+    const state = { ...initialState(), larder: [value] }
+    expect(isValidState(state)).toBe(true)
+  })
+
+  it.each(['my-zz"]', 'Courgette', 'courgette ', '<b>', 'a/b'])('rejects %s, so ids stay inert in keys and selectors', (value) => {
+    const state = { ...initialState(), larder: [value] }
+    expect(isValidState(state)).toBe(false)
   })
 })

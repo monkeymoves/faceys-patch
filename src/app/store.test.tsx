@@ -166,3 +166,59 @@ describe('dispatching twice in one event', () => {
     expect(JSON.parse(saved)).toMatchObject({ larder: ['olive-oil'], harvest: [{ ingredientId: 'courgette' }] })
   })
 })
+
+describe('more than one copy open (another tab, or the installed app beside a browser tab)', () => {
+  const otherCopyWrites = (storage: KeyValueStorage, state: AppState) => {
+    const value = JSON.stringify(state)
+    storage.setItem(STORAGE_KEY, value)
+    window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: value }))
+  }
+
+  it("adopts the other copy's changes, so a later change here doesn't overwrite them", () => {
+    const storage = memoryStorage()
+    const { result } = renderStore(storage)
+
+    act(() => otherCopyWrites(storage, { ...initialState(), larder: ['feta'] }))
+    expect(result.current.state.larder).toEqual(['feta'])
+
+    act(() => result.current.dispatch(addCourgettes))
+    expect(JSON.parse(storage.data.get(STORAGE_KEY) ?? '{}')).toMatchObject({
+      larder: ['feta'],
+      harvest: [{ ingredientId: 'courgette' }],
+    })
+  })
+
+  it('puts our data back if something else on the same site deletes it', () => {
+    const storage = memoryStorage()
+    const { result } = renderStore(storage)
+    act(() => result.current.dispatch(addCourgettes))
+
+    storage.data.clear()
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: null }))
+    })
+    expect(JSON.parse(storage.data.get(STORAGE_KEY) ?? '{}')).toMatchObject({ harvest: [{ ingredientId: 'courgette' }] })
+  })
+
+  it('ignores changes to other keys', () => {
+    const storage = memoryStorage()
+    const { result } = renderStore(storage)
+    const before = result.current.state
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'someone-elses-app', newValue: 'x' }))
+    })
+    expect(result.current.state).toBe(before)
+  })
+})
+
+describe('corrupt data', () => {
+  it('offers the kept copy of unreadable data', () => {
+    const { result } = renderStore(memoryStorage({ [STORAGE_KEY]: '{half a file' }))
+    expect(result.current.readCorruptCopy?.()).toBe('{half a file')
+  })
+
+  it('offers nothing when the data loaded fine', () => {
+    const { result } = renderStore(memoryStorage())
+    expect(result.current.readCorruptCopy).toBeUndefined()
+  })
+})

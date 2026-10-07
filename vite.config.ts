@@ -14,7 +14,7 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data:",
   "font-src 'self'",
   "connect-src 'self'",
   "manifest-src 'self'",
@@ -46,9 +46,10 @@ export default defineConfig({
     react(),
     contentSecurityPolicy(),
     VitePWA({
-      registerType: 'autoUpdate',
-      // An external registerSW.js script, so the strict CSP needs no inline scripts.
-      injectRegister: 'script-defer',
+      // The app offers updates itself (src/app/UpdateNotice.tsx) rather than
+      // reloading under someone mid-edit. Registration is bundled, so the strict
+      // CSP needs no inline scripts.
+      registerType: 'prompt',
       manifest: {
         name: "Facey's Patch",
         short_name: "Facey's Patch",
@@ -77,6 +78,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    alias: { 'virtual:pwa-register/react': new URL('./src/test/pwaRegisterStub.ts', import.meta.url).pathname },
     include: ['src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',

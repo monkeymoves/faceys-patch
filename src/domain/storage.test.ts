@@ -63,9 +63,35 @@ describe('loadState', () => {
     ['JSON that fails the schema', JSON.stringify({ ...savedState, larder: 'feta' })],
   ])('keeps a copy of saved data that is %s, then starts fresh with a notice', (_label, raw) => {
     const { data, storage } = memoryStorage({ [STORAGE_KEY]: raw })
-    expect(loadState(storage, now)).toEqual({ state: initialState(), notice: 'recovered-corrupt' })
-    expect(data.get(`${STORAGE_KEY}.corrupt.${NOW.getTime()}`)).toBe(raw)
-    expect(data.get(STORAGE_KEY)).toBe(raw)
+    const copyKey = `${STORAGE_KEY}.corrupt.${NOW.getTime()}`
+    expect(loadState(storage, now)).toEqual({
+      state: initialState(),
+      notice: 'recovered-corrupt',
+      corruptCopyKey: copyKey,
+    })
+    expect(data.get(copyKey)).toBe(raw)
+  })
+
+  it('starts afresh for real after keeping a copy, so reloading does not pile up more copies', () => {
+    const { data, storage } = memoryStorage({ [STORAGE_KEY]: 'not json' })
+    loadState(storage, now)
+    expect(JSON.parse(data.get(STORAGE_KEY) ?? '')).toEqual(initialState())
+
+    expect(loadState(storage, () => new Date(NOW.getTime() + 1000))).toEqual({ state: initialState() })
+    expect([...data.keys()].filter((key) => key.includes('.corrupt.'))).toHaveLength(1)
+  })
+
+  it('still reports the kept copy when the fresh start cannot be written', () => {
+    const data = new Map([[STORAGE_KEY, 'not json']])
+    const storage: KeyValueStorage = {
+      getItem: (key) => data.get(key) ?? null,
+      setItem: (key, value) => {
+        if (key === STORAGE_KEY) throw new DOMException('Full', 'QuotaExceededError')
+        data.set(key, value)
+      },
+    }
+    expect(loadState(storage, now)).toMatchObject({ notice: 'recovered-corrupt' })
+    expect(data.get(`${STORAGE_KEY}.corrupt.${NOW.getTime()}`)).toBe('not json')
   })
 
   it('starts fresh with a notice when storage cannot be read at all', () => {
@@ -119,10 +145,10 @@ describe('saveState', () => {
 })
 
 describe('serializeBackup', () => {
-  it('writes pretty JSON with the app name, the export time and the state', () => {
+  it('writes compact JSON with the app name, the export time and the state', () => {
     const text = serializeBackup(savedState, NOW)
     expect(JSON.parse(text)).toEqual({ app: 'faceys-patch', exportedAt: NOW.toISOString(), state: savedState })
-    expect(text).toContain('\n  "app": "faceys-patch"')
+    expect(text).not.toContain('\n')
   })
 })
 
@@ -137,13 +163,13 @@ describe('parseBackup', () => {
     expect(parseBackup(text)).toEqual({ ok: true, state: { ...older, myRecipes: [], myIngredients: [] } })
   })
 
-  it('accepts a file of exactly 1 MB', () => {
+  it('accepts a file of exactly 10 MB, more than localStorage can ever hold', () => {
     const text = serializeBackup(savedState, NOW)
-    expect(MAX_BACKUP_BYTES).toBe(1_000_000)
+    expect(MAX_BACKUP_BYTES).toBe(10_000_000)
     expect(parseBackup(text.padEnd(MAX_BACKUP_BYTES, ' ')).ok).toBe(true)
   })
 
-  it('rejects a file over 1 MB before trying to read it', () => {
+  it('rejects a file over 10 MB before trying to read it', () => {
     const text = serializeBackup(savedState, NOW).padEnd(MAX_BACKUP_BYTES + 1, ' ')
     expect(parseBackup(text)).toEqual({ ok: false, reason: 'too-big', error: expect.any(String) })
   })

@@ -37,7 +37,7 @@ describe('domain public API', () => {
     ]
     for (const name of functions) expect(typeof domain[name as keyof typeof domain], name).toBe('function')
     expect(domain.STORAGE_KEY).toBe('faceys-patch.v1')
-    expect(domain.MAX_BACKUP_BYTES).toBe(1_000_000)
+    expect(domain.MAX_BACKUP_BYTES).toBe(10_000_000)
     expect(domain.AISLE_LABELS['tins-jars']).toBe('Tins and jars')
     expect(domain.MY_ID_PREFIX).toBe('my-')
     expect(domain.AISLES).toContain('veg')

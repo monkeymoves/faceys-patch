@@ -1,4 +1,8 @@
 import { z } from 'zod'
+
+// zod probes for `new Function` to speed up parsing; our CSP forbids that, so
+// skip the probe rather than log a violation on every load.
+z.config({ jitless: true })
 import { isISODate } from './dates'
 import { AISLES, ART_KEYS, COURSES, DIETS, HARVEST_STATUSES, MY_ID_PREFIX, type AppState } from './types'
 
@@ -17,8 +21,8 @@ export const LIMITS = {
   titleLength: 80,
   nameLength: 80,
   blurbLength: 200,
-  amountLength: 40,
-  prepLength: 40,
+  amountLength: 80,
+  prepLength: 80,
   stepLength: 600,
   steps: 30,
   recipeIngredients: 30,
@@ -35,7 +39,12 @@ const byId = (item: { id: string }) => item.id
 const sizeAtMost = (max: number) => (record: object) => Object.keys(record).length <= max
 
 const isoDate = z.string().refine(isISODate, { error: 'Not a calendar date' })
-const id = z.string().min(1).max(LIMITS.idLength)
+/** Lower-case letters, digits and hyphens only: every id we make looks like this, and it keeps ids inert anywhere they end up (keys, selectors, URLs). */
+const id = z
+  .string()
+  .min(1)
+  .max(LIMITS.idLength)
+  .regex(/^[a-z0-9-]+$/, { error: 'Not a valid id' })
 const myId = id.refine((value) => value.startsWith(MY_ID_PREFIX), { error: `Must start with ${MY_ID_PREFIX}` })
 const nonBlank = (max: number) =>
   z

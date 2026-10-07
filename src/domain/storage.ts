@@ -3,7 +3,8 @@ import { initialState } from './state'
 import type { AppState } from './types'
 
 export const STORAGE_KEY = 'faceys-patch.v1'
-export const MAX_BACKUP_BYTES = 1_000_000
+/** Well above anything localStorage can hold (about 5 MB), so a real backup always fits. */
+export const MAX_BACKUP_BYTES = 10_000_000
 const BACKUP_APP = 'faceys-patch'
 
 /** The two methods of localStorage we use, so tests can pass a fake (including one that throws). */
@@ -17,6 +18,8 @@ export type LoadNotice = 'recovered-corrupt' | 'storage-unavailable'
 export interface LoadResult {
   state: AppState
   notice?: LoadNotice
+  /** With 'recovered-corrupt': where the unreadable data was copied, so it can be offered as a download. */
+  corruptCopyKey?: string
 }
 
 export type SaveResult = { ok: true } | { ok: false; reason: 'quota' | 'unavailable' }
@@ -58,13 +61,20 @@ export function loadState(storage: KeyValueStorage, now: () => Date = () => new 
   const parsed = json.ok ? appStateSchema.safeParse(json.value) : undefined
   if (parsed?.success) return { state: parsed.data }
 
+  const corruptCopyKey = `${STORAGE_KEY}.corrupt.${now().getTime()}`
   try {
-    storage.setItem(`${STORAGE_KEY}.corrupt.${now().getTime()}`, raw)
+    storage.setItem(corruptCopyKey, raw)
   } catch {
     // No safe copy could be kept, so don't claim one was.
     return { state: initialState(), notice: 'storage-unavailable' }
   }
-  return { state: initialState(), notice: 'recovered-corrupt' }
+  try {
+    // Start afresh for real, so the next load doesn't copy the same data again.
+    storage.setItem(STORAGE_KEY, JSON.stringify(initialState()))
+  } catch {
+    // The copy is safe; the next successful save will replace the bad data.
+  }
+  return { state: initialState(), notice: 'recovered-corrupt', corruptCopyKey }
 }
 
 const QUOTA_ERRORS = new Set(['QuotaExceededError', 'NS_ERROR_DOM_QUOTA_REACHED'])
@@ -85,7 +95,7 @@ export function saveState(storage: KeyValueStorage, state: AppState): SaveResult
 
 export function serializeBackup(state: AppState, now: Date): string {
   // exportedAt is an instant, not a calendar date, so UTC ISO time is right here.
-  return JSON.stringify({ app: BACKUP_APP, exportedAt: now.toISOString(), state }, null, 2)
+  return JSON.stringify({ app: BACKUP_APP, exportedAt: now.toISOString(), state })
 }
 
 const fail = (reason: BackupProblem): ParseBackupResult => ({ ok: false, reason, error: BACKUP_ERRORS[reason] })
