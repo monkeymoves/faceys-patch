@@ -1,5 +1,5 @@
 import { Notice } from '../ui/Notice'
-import { useStore, type StorageProblem } from './store'
+import { useStore, type StorageProblem } from './useStore'
 
 const MESSAGES: Record<StorageProblem, { title: string; text: string }> = {
   'recovered-corrupt': {

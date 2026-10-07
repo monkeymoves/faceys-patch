@@ -29,3 +29,20 @@ treat that file as a contract and don't change it without being asked.
 - Never inject raw HTML into the DOM. No new runtime dependencies without asking.
 - Writing style for all copy, comments and docs: no em dashes or en dashes.
   Use commas, colons, brackets or a new sentence. British spelling.
+
+## App layer (src/app), for building screens
+
+- `useStore()` from `src/app/useStore`: `{ state, dispatch, catalogue, problem, dismissProblem }`.
+  `catalogue` already includes the person's own recipes and ingredients. Always use it,
+  never `CATALOGUE` from src/data directly, so their recipes behave like built-in ones.
+- `useSupplies()` / `useMatches()` from `src/app/hooks`: memoised inputs for the domain and
+  the ranked recipe matches.
+- `useNavigation()` from `src/app/useNavigation`: `{ route, go }`. Routes live in the URL hash.
+- `useViewedWeek()` from `src/app/useViewedWeek`: the week shown on Week and Shop (shared).
+- `useToday()` from `src/app/useToday`, `makeMealId()` from `src/app/ids`.
+- The reducer silently refuses changes that would break the saved-state schema, so validate
+  user input first (`LIMITS`, `myRecipeSchema`, `myIngredientSchema` from src/domain).
+- Contexts are split into a provider component file and a hook file (`store.tsx` +
+  `useStore.ts`), because the lint rule for fast refresh forbids mixing them.
+- Screen tests: `renderWithApp(<Screen />, { state })` from `src/test/render` seeds state
+  through the real providers and returns `{ user, saved }` alongside the usual queries.

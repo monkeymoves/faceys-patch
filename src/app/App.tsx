@@ -9,9 +9,11 @@ import { AppHeader } from '../ui/AppHeader'
 import { IconButton } from '../ui/IconButton'
 import { MAIN_TABS, TabBar, type MainTabId } from '../ui/TabBar'
 import styles from './App.module.css'
-import { NavigationProvider, useNavigation } from './navigation'
+import { NavigationProvider } from './navigation'
+import { useNavigation } from './useNavigation'
 import { StorageNotice } from './StorageNotice'
 import { StoreProvider } from './store'
+import { ViewedWeekProvider } from './viewedWeek'
 
 const SCREENS: Record<MainTabId, ComponentType> = {
   patch: PatchScreen,
@@ -25,7 +27,9 @@ export function App() {
   return (
     <StoreProvider>
       <NavigationProvider>
-        <Shell />
+        <ViewedWeekProvider>
+          <Shell />
+        </ViewedWeekProvider>
       </NavigationProvider>
     </StoreProvider>
   )

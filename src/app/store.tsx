@@ -1,4 +1,4 @@
-import { createContext, use, useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CATALOGUE } from '../data'
 import {
   loadState,
@@ -6,35 +6,11 @@ import {
   saveState,
   withMyContent,
   type Action,
-  type AppState,
   type Catalogue,
   type KeyValueStorage,
-  type LoadNotice,
 } from '../domain'
-
-/**
- * localStorage, touched lazily: in some Safari modes even reading
- * `window.localStorage` throws, and this way that throw lands inside the
- * domain's try/catch rather than crashing the app.
- */
-export const browserStorage: KeyValueStorage = {
-  getItem: (key) => window.localStorage.getItem(key),
-  setItem: (key, value) => window.localStorage.setItem(key, value),
-}
-
-/** Something the person needs to know about their saved data. */
-export type StorageProblem = LoadNotice | 'save-quota' | 'save-failed'
-
-interface Store {
-  state: AppState
-  dispatch: (action: Action) => void
-  /** Built-in recipes and ingredients plus the person's own. */
-  catalogue: Catalogue
-  problem: StorageProblem | undefined
-  dismissProblem: () => void
-}
-
-const StoreContext = createContext<Store | null>(null)
+import { browserStorage } from './browserStorage'
+import { StoreContext, type StorageProblem } from './useStore'
 
 interface StoreProviderProps {
   children: ReactNode
@@ -44,37 +20,39 @@ interface StoreProviderProps {
 
 export function StoreProvider({ children, storage = browserStorage, builtIn = CATALOGUE }: StoreProviderProps) {
   const [loaded] = useState(() => loadState(storage))
-  const [state, dispatch] = useReducer(reducer, loaded.state)
+  const [state, setState] = useState(loaded.state)
   const [problem, setProblem] = useState<StorageProblem | undefined>(loaded.notice)
+  // The latest state, so several dispatches in one event each build on the last.
+  const latest = useRef(loaded.state)
 
   // If storage couldn't be read (or a corrupt copy couldn't be kept), writing
   // would risk overwriting data we never managed to read. Stay read-only.
   const canSave = loaded.notice !== 'storage-unavailable'
-  const lastSaved = useRef(loaded.state)
 
-  useEffect(() => {
-    if (!canSave || state === lastSaved.current) return
-    const result = saveState(storage, state)
-    if (result.ok) {
-      lastSaved.current = state
-      setProblem((current) => (current === 'save-quota' || current === 'save-failed' ? undefined : current))
-    } else {
-      setProblem(result.reason === 'quota' ? 'save-quota' : 'save-failed')
-    }
-  }, [canSave, state, storage])
+  const dispatch = useCallback(
+    (action: Action) => {
+      const next = reducer(latest.current, action)
+      if (next === latest.current) return
+      latest.current = next
+      setState(next)
+      if (!canSave) return
+
+      const result = saveState(storage, next)
+      if (result.ok) {
+        setProblem((current) => (current === 'save-quota' || current === 'save-failed' ? undefined : current))
+      } else {
+        setProblem(result.reason === 'quota' ? 'save-quota' : 'save-failed')
+      }
+    },
+    [canSave, storage],
+  )
 
   const catalogue = useMemo(() => withMyContent(builtIn, state), [builtIn, state])
   const dismissProblem = useCallback(() => setProblem(undefined), [])
 
   const store = useMemo(
     () => ({ state, dispatch, catalogue, problem, dismissProblem }),
-    [state, catalogue, problem, dismissProblem],
+    [state, dispatch, catalogue, problem, dismissProblem],
   )
   return <StoreContext value={store}>{children}</StoreContext>
-}
-
-export function useStore(): Store {
-  const store = use(StoreContext)
-  if (!store) throw new Error('useStore must be used inside <StoreProvider>')
-  return store
 }

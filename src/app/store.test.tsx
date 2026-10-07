@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import { describe, expect, it } from 'vitest'
 import { initialState, STORAGE_KEY, type AppState, type KeyValueStorage } from '../domain'
 import { makeMealId } from './ids'
-import { StoreProvider, useStore } from './store'
+import { StoreProvider } from './store'
+import { useStore } from './useStore'
 
 function memoryStorage(initial: Record<string, string> = {}): KeyValueStorage & { data: Map<string, string> } {
   const data = new Map(Object.entries(initial))
@@ -126,5 +127,20 @@ describe('makeMealId', () => {
   it('makes distinct ids', () => {
     expect(makeMealId()).not.toBe(makeMealId())
     expect(makeMealId()).toMatch(/^meal-/)
+  })
+})
+
+describe('dispatching twice in one event', () => {
+  it('applies both changes and saves the result', () => {
+    let saved = ''
+    const storage: KeyValueStorage = { getItem: () => null, setItem: (_key, value) => void (saved = value) }
+    const { result } = renderStore(storage)
+    act(() => {
+      result.current.dispatch(addCourgettes)
+      result.current.dispatch({ type: 'larder/add', ingredientIds: ['olive-oil'] })
+    })
+    expect(result.current.state.harvest).toHaveLength(1)
+    expect(result.current.state.larder).toEqual(['olive-oil'])
+    expect(JSON.parse(saved)).toMatchObject({ larder: ['olive-oil'], harvest: [{ ingredientId: 'courgette' }] })
   })
 })

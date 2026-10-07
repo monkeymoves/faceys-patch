@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseHash, routeToHash } from './navigation'
+import { parseHash, routeToHash } from './routes'
 
 describe('parseHash', () => {
   it.each([
