@@ -9,8 +9,9 @@ import {
   type IngredientId,
   type ISODate,
 } from '../../domain'
+import { byName, midSentence } from '../shared/text'
 
-/** A crop on the patch, joined with what we know about it. */
+/** A crop on the patch, joined with what the catalogue says about it. */
 export interface Crop {
   id: IngredientId
   name: string
@@ -23,8 +24,6 @@ export const STATUS_OPTIONS = [
   { value: 'ready', label: 'Ready now' },
   { value: 'soon', label: 'Coming soon' },
 ] as const satisfies readonly { value: HarvestStatus; label: string }[]
-
-export const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'en-GB')
 
 export const artFor = (ingredient: Ingredient): ArtKey => ingredient.art ?? 'seedling'
 
@@ -73,15 +72,8 @@ export function seasonalPicks(catalogue: Catalogue, month: number, count: number
     .slice(0, count)
 }
 
-const fold = (text: string) =>
-  text
-    .normalize('NFKD')
-    .replace(/\p{M}/gu, '')
-    .toLocaleLowerCase('en-GB')
-    .trim()
+/** 'Added courgettes to the patch.' */
+export const addedToPatch = (name: string) => `Added ${midSentence(name)} to the patch.`
 
-/** Case and accent insensitive "contains". An empty query matches everything. */
-export const matchesQuery = (name: string, query: string) => fold(name).includes(fold(query))
-
-/** 'Courgettes' to 'courgettes', for use mid-sentence. */
-export const midSentence = (name: string) => name.charAt(0).toLocaleLowerCase('en-GB') + name.slice(1)
+/** 'Took courgettes off the patch.' */
+export const tookOffPatch = (name: string) => `Took ${midSentence(name)} off the patch.`

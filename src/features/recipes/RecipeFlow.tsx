@@ -6,7 +6,7 @@ import { DayPickerSheet } from './DayPickerSheet'
 import { RecipeFormSheet } from './RecipeFormSheet'
 import { RecipeViewSheet } from './RecipeViewSheet'
 
-/** A meal on the plan, so the recipe view can offer "Mark as cooked" and "Take off this day". */
+/** A meal on the plan, so the recipe view can offer "Mark as cooked" and "Take it off this day". */
 export interface PlannedMealRef {
   date: ISODate
   mealId: string
@@ -66,6 +66,7 @@ export function RecipeFlow({ flow, onFlowChange }: RecipeFlowProps) {
       />
       <DayPickerSheet
         open={top === 'days' && recipe !== undefined}
+        recipeId={recipe?.id}
         recipeTitle={recipe?.title ?? ''}
         onClose={back}
         onPick={(date) => {

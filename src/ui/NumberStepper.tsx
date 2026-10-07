@@ -70,13 +70,16 @@ export function NumberStepper({
       <FieldLabel htmlFor={ids.control}>{label}</FieldLabel>
       {hint && <FieldHint id={ids.hint}>{hint}</FieldHint>}
       <div className={styles.control}>
+        {/* aria-disabled, not disabled: a disabled button drops keyboard focus to the page. */}
         <IconButton
           icon="minus"
           label={decreaseLabel}
           variant="secondary"
           size="lg"
-          disabled={value <= min}
-          onClick={() => set(value - step)}
+          aria-disabled={value <= min ? true : undefined}
+          onClick={() => {
+            if (value > min) set(value - step)
+          }}
         />
         <span className={styles.numberWrap}>
           <input
@@ -108,8 +111,10 @@ export function NumberStepper({
           label={increaseLabel}
           variant="secondary"
           size="lg"
-          disabled={value >= max}
-          onClick={() => set(value + step)}
+          aria-disabled={value >= max ? true : undefined}
+          onClick={() => {
+            if (value < max) set(value + step)
+          }}
         />
       </div>
       {error && <FieldError id={ids.error}>{error}</FieldError>}

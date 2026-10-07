@@ -10,36 +10,28 @@ import {
   AISLES,
   buildShoppingList,
   formatWeekRange,
-  parseISODate,
+  knownMeals,
   shoppingListText,
   weekDates,
   type ISODate,
   type ShoppingItem,
 } from '../../domain'
+import { Announcer } from '../../ui/Announcer'
 import { Button } from '../../ui/Button'
 import { Checkbox } from '../../ui/Checkbox'
 import { EmptyState } from '../../ui/EmptyState'
-import { IconButton } from '../../ui/IconButton'
 import { Notice, type NoticeTone } from '../../ui/Notice'
 import { Page } from '../../ui/Page'
+import { PeriodNav } from '../../ui/PeriodNav'
 import { ScreenTitle } from '../../ui/ScreenTitle'
+import { useAnnouncer } from '../../ui/useAnnouncer'
+import { weekLabel } from '../shared/weeks'
 import { forRecipes, isCancelled, movedMessage } from './shoppingCopy'
 import styles from './Shop.module.css'
 
 interface Message {
   tone: NoticeTone
   text: string
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000
-
-/** 'This week', 'Next week', 'Last week', 'In 3 weeks' or '2 weeks ago'. */
-function relativeWeek(weekStart: ISODate, thisWeek: ISODate): string {
-  const weeks = Math.round((parseISODate(weekStart).getTime() - parseISODate(thisWeek).getTime()) / (7 * DAY_MS))
-  if (weeks === 0) return 'This week'
-  if (weeks === 1) return 'Next week'
-  if (weeks === -1) return 'Last week'
-  return weeks > 0 ? `In ${weeks} weeks` : `${-weeks} weeks ago`
 }
 
 /** The shopping list for the week on show: what the planned meals need that you haven't got. */
@@ -49,34 +41,43 @@ export function ShopScreen() {
   const { go } = useNavigation()
   const { weekStart, thisWeek, showWeekOf } = useViewedWeek()
   const [message, setMessage] = useState<Message | null>(null)
-  const messageBox = useRef<HTMLDivElement>(null)
-  const focusMessageNext = useRef(false)
+  const [announcement, announce] = useAnnouncer()
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const moveButton = useRef<HTMLButtonElement>(null)
+  const focusHeadingNext = useRef(false)
+  const moveHintId = useId()
 
-  // Putting things away disables or removes the button that did it, so focus moves to what happened.
+  // Putting the last things away takes the list (and the button) with it, so carry on from the top.
   useEffect(() => {
-    if (!focusMessageNext.current) return
-    focusMessageNext.current = false
-    messageBox.current?.focus()
+    if (!focusHeadingNext.current) return
+    focusHeadingNext.current = false
+    if (!moveButton.current?.isConnected) headingRef.current?.focus()
   })
 
   const items = useMemo(
     () => buildShoppingList({ ...supplies, plan: state.plan, shoppingTicks: state.shoppingTicks, weekStart }),
     [supplies, state.plan, state.shoppingTicks, weekStart],
   )
-  const meals = weekDates(weekStart).flatMap((date) => state.plan[date] ?? [])
+  const meals = weekDates(weekStart).flatMap((date) => knownMeals(state.plan, date, catalogue))
   const ticked = items.filter((item) => item.ticked)
   const isThisWeek = weekStart === thisWeek
+
+  function say(next: Message) {
+    setMessage(next)
+    announce(next.text)
+  }
 
   function changeWeek(date: ISODate) {
     setMessage(null)
     showWeekOf(date)
+    announce(weekLabel(date, thisWeek))
   }
 
   function moveTicked() {
-    const names = ticked.map((item) => item.name)
-    dispatch({ type: 'shop/moveTickedToLarder', weekStart })
-    setMessage({ tone: 'success', text: movedMessage(names) })
-    focusMessageNext.current = true
+    if (ticked.length === 0) return
+    dispatch({ type: 'shop/moveTickedToLarder', weekStart, ingredientIds: ticked.map((item) => item.ingredientId) })
+    say({ tone: 'success', text: movedMessage(ticked.map((item) => item.name)) })
+    focusHeadingNext.current = true
   }
 
   async function share() {
@@ -88,49 +89,33 @@ export function ShopScreen() {
         await navigator.share({ title, text })
       } catch (error) {
         if (!isCancelled(error)) {
-          setMessage({ tone: 'problem', text: "The list couldn't be shared. Try again in a moment." })
+          say({ tone: 'problem', text: "The list couldn't be shared. Try again in a moment." })
         }
       }
       return
     }
     try {
       await navigator.clipboard.writeText(text)
-      setMessage({ tone: 'success', text: 'Copied to your clipboard' })
+      say({ tone: 'success', text: 'Copied to your clipboard.' })
     } catch {
-      setMessage({ tone: 'problem', text: "The list couldn't be copied. This browser may not allow it." })
+      say({ tone: 'problem', text: "The list couldn't be copied. This browser may not allow it." })
     }
   }
 
   return (
     <Page>
-      <ScreenTitle
-        aside={formatWeekRange(weekStart)}
-        action={
-          !isThisWeek && (
-            <Button size="sm" variant="secondary" onClick={() => changeWeek(thisWeek)}>
-              This week
-            </Button>
-          )
-        }
-      >
-        Shopping
-      </ScreenTitle>
+      <ScreenTitle ref={headingRef}>Shopping list</ScreenTitle>
+      <Announcer message={announcement} />
 
-      <div className={styles.weekBar}>
-        <IconButton
-          icon="chevronLeft"
-          label="Previous week"
-          variant="secondary"
-          onClick={() => changeWeek(addDays(weekStart, -7))}
-        />
-        <p className={styles.weekName}>{relativeWeek(weekStart, thisWeek)}</p>
-        <IconButton
-          icon="chevronRight"
-          label="Next week"
-          variant="secondary"
-          onClick={() => changeWeek(addDays(weekStart, 7))}
-        />
-      </div>
+      <PeriodNav
+        className={styles.weekBar}
+        label={weekLabel(weekStart, thisWeek)}
+        previousLabel="Previous week"
+        nextLabel="Next week"
+        onPrevious={() => changeWeek(addDays(weekStart, -7))}
+        onNext={() => changeWeek(addDays(weekStart, 7))}
+        jump={isThisWeek ? undefined : { label: 'Back to this week', onClick: () => changeWeek(thisWeek) }}
+      />
 
       {items.length > 0 ? (
         <>
@@ -140,9 +125,23 @@ export function ShopScreen() {
             onToggle={(item) => dispatch({ type: 'shop/toggle', weekStart, ingredientId: item.ingredientId })}
           />
           <div className={styles.actions}>
-            <Button icon="jar" disabled={ticked.length === 0} onClick={moveTicked}>
-              Put ticked in the larder
-            </Button>
+            <div className={styles.move}>
+              {/* aria-disabled rather than disabled, so it keeps focus and can say why. */}
+              <Button
+                ref={moveButton}
+                icon="jar"
+                aria-disabled={ticked.length === 0 ? true : undefined}
+                aria-describedby={ticked.length === 0 ? moveHintId : undefined}
+                onClick={moveTicked}
+              >
+                Put ticked in the larder
+              </Button>
+              {ticked.length === 0 && (
+                <p id={moveHintId} className={styles.moveHint}>
+                  Tick what you've bought first.
+                </p>
+              )}
+            </div>
             <Button variant="secondary" icon="share" onClick={share}>
               Share list
             </Button>
@@ -158,8 +157,15 @@ export function ShopScreen() {
       )}
 
       {message && (
-        <div ref={messageBox} tabIndex={-1} className={styles.message}>
-          <Notice tone={message.tone} onDismiss={() => setMessage(null)}>
+        <div className={styles.message}>
+          <Notice
+            tone={message.tone}
+            live={false}
+            onDismiss={() => {
+              setMessage(null)
+              headingRef.current?.focus()
+            }}
+          >
             {message.text}
           </Notice>
         </div>

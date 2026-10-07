@@ -4,6 +4,25 @@
   padding-bottom: var(--space-2);
 }
 
+/* Save and Cancel side by side, Save on the right; they stack when the text is big. */
+.footer {
+  display: flex;
+  flex-direction: row-reverse;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.footer > * {
+  flex: 1 1 9rem;
+}
+
+@media (min-width: 900px) {
+  .footer > * {
+    flex: 0 0 auto;
+    min-width: 8rem;
+  }
+}
+
 .pair {
   display: flex;
   flex-wrap: wrap;

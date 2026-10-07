@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { useStore } from '../../app/useStore'
 import { LIMITS, makeMyId, type Ingredient, type IngredientId, type Recipe, type RecipeId } from '../../domain'
 import { Button } from '../../ui/Button'
+import { ConfirmDialog } from '../../ui/ConfirmDialog'
 import { FieldGroup } from '../../ui/FieldGroup'
 import { IngredientRow } from '../../ui/IngredientRow'
 import { NumberStepper } from '../../ui/NumberStepper'
@@ -44,24 +45,38 @@ function startingDraft(mode: RecipeFormMode, recipe: Recipe | undefined): Recipe
   return recipe && mode !== 'new' ? draftFromRecipe(recipe, mode === 'copy') : emptyDraft()
 }
 
+const sameDraft = (a: RecipeDraft, b: RecipeDraft) => JSON.stringify(a) === JSON.stringify(b)
+
 /** Write, edit or copy a recipe. Nothing is saved until it passes every check. */
 export function RecipeFormSheet({ open, mode, recipe, onClose, onSaved }: RecipeFormSheetProps) {
   const { state, dispatch, catalogue } = useStore()
-  const [draft, setDraft] = useState(() => startingDraft(mode, recipe))
+  const [start, setStart] = useState(() => startingDraft(mode, recipe))
+  const [draft, setDraft] = useState(start)
   const [errors, setErrors] = useState<DraftErrors>({})
   const [wasOpen, setWasOpen] = useState(open)
   const [attempts, setAttempts] = useState(0)
   const [focusRow, setFocusRow] = useState<IngredientId | null>(null)
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
 
   // Start afresh each time the sheet opens.
   if (open !== wasOpen) {
     setWasOpen(open)
+    setConfirmingDiscard(false)
     if (open) {
-      setDraft(startingDraft(mode, recipe))
+      const fresh = startingDraft(mode, recipe)
+      setStart(fresh)
+      setDraft(fresh)
       setErrors({})
       setFocusRow(null)
     }
+  }
+
+  /** Closing loses what's been typed, so ask first if anything has changed. True to close now. */
+  function readyToClose(): boolean {
+    if (sameDraft(draft, start)) return true
+    setConfirmingDiscard(true)
+    return false
   }
 
   // After a failed save, take the person to the first thing to fix.
@@ -70,10 +85,11 @@ export function RecipeFormSheet({ open, mode, recipe, onClose, onSaved }: Recipe
     formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
   }, [attempts])
 
-  // After adding an ingredient, put the cursor in its amount.
+  // After adding an ingredient, put the cursor in its amount. Ids are already
+  // plain, so escaping them is belt and braces.
   useEffect(() => {
     if (!focusRow) return
-    formRef.current?.querySelector<HTMLElement>(`[data-row="${focusRow}"] input[type="text"]`)?.focus()
+    formRef.current?.querySelector<HTMLElement>(`[data-row="${CSS.escape(focusRow)}"] input[type="text"]`)?.focus()
   }, [focusRow])
 
   function change<K extends keyof RecipeDraft>(key: K, value: RecipeDraft[K], field?: DraftField) {
@@ -86,6 +102,7 @@ export function RecipeFormSheet({ open, mode, recipe, onClose, onSaved }: Recipe
       ...current,
       rows: current.rows.map((row) => (row.id === id ? { ...row, ...patch } : row)),
     }))
+    if (errors.rows?.[id]) setErrors((current) => ({ ...current, rows: { ...current.rows, [id]: undefined } }))
   }
 
   function addRow(ingredient: Ingredient) {
@@ -106,7 +123,7 @@ export function RecipeFormSheet({ open, mode, recipe, onClose, onSaved }: Recipe
   function save() {
     const editing = mode === 'edit' && recipe !== undefined
     if (!editing && state.myRecipes.length >= LIMITS.myRecipes) {
-      setErrors({ title: "You've written as many recipes as the app can keep" })
+      setErrors({ title: "You've written as many recipes as the app can keep." })
       setAttempts((count) => count + 1)
       return
     }
@@ -121,32 +138,54 @@ export function RecipeFormSheet({ open, mode, recipe, onClose, onSaved }: Recipe
     onSaved(result.recipe.id)
   }
 
+  // The confirm comes first so that, closing with the form, it hands focus back first.
   return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title={TITLES[mode]}
-      footer={
-        <>
-          <Button onClick={save}>Save recipe</Button>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-        </>
-      }
-    >
-      <RecipeFields
-        formRef={formRef}
-        draft={draft}
-        errors={errors}
-        onChange={change}
-        onSave={save}
-        onAddRow={addRow}
-        onUpdateRow={updateRow}
-        onRemoveRow={removeRow}
-        autoFocusTitle={mode === 'new'}
+    <>
+      <ConfirmDialog
+        open={open && confirmingDiscard}
+        title="Throw this recipe away?"
+        message={<p>What you've written here won't be kept.</p>}
+        confirmLabel="Throw it away"
+        cancelLabel="Keep writing"
+        destructive
+        onConfirm={() => {
+          setConfirmingDiscard(false)
+          onClose()
+        }}
+        onCancel={() => setConfirmingDiscard(false)}
       />
-    </Sheet>
+      <Sheet
+        open={open}
+        onClose={onClose}
+        shouldClose={readyToClose}
+        title={TITLES[mode]}
+        footer={
+          <div className={styles.footer}>
+            <Button onClick={save}>Save recipe</Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (readyToClose()) onClose()
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        }
+      >
+        <RecipeFields
+          formRef={formRef}
+          draft={draft}
+          errors={errors}
+          onChange={change}
+          onSave={save}
+          onAddRow={addRow}
+          onUpdateRow={updateRow}
+          onRemoveRow={removeRow}
+          autoFocusTitle={mode === 'new'}
+        />
+      </Sheet>
+    </>
   )
 }
 
@@ -175,6 +214,7 @@ function RecipeFields({
 }: RecipeFieldsProps) {
   const { catalogue } = useStore()
   const chosen = new Set(draft.rows.map((row) => row.id))
+  const ingredientsErrorId = useId()
 
   return (
     <form
@@ -236,7 +276,12 @@ function RecipeFields({
         onChange={(value) => onChange('course', value, 'course')}
         error={errors.course}
       />
-      <FieldGroup legend="Ingredients" hint="Salt, pepper and water are taken as read." error={errors.ingredients}>
+      <FieldGroup
+        legend="Ingredients"
+        hint="Salt, pepper and water are taken as read."
+        error={errors.ingredients}
+        errorId={ingredientsErrorId}
+      >
         {draft.rows.map((row) => {
           const ingredient = catalogue.ingredients.get(row.id)
           const name = ingredient?.name ?? row.id
@@ -246,6 +291,8 @@ function RecipeFields({
                 name={name}
                 art={ingredient?.art}
                 amount={row.amount}
+                amountMaxLength={LIMITS.amountLength}
+                error={errors.rows?.[row.id]}
                 onAmountChange={(amount) => onUpdateRow(row.id, { amount })}
                 optional={row.optional}
                 onOptionalChange={(optional) => onUpdateRow(row.id, { optional })}
@@ -255,7 +302,12 @@ function RecipeFields({
           )
         })}
         {draft.rows.length < LIMITS.recipeIngredients ? (
-          <IngredientAdder chosen={chosen} onAdd={onAddRow} invalid={errors.ingredients !== undefined} />
+          <IngredientAdder
+            chosen={chosen}
+            onAdd={onAddRow}
+            invalid={errors.ingredients !== undefined}
+            errorId={ingredientsErrorId}
+          />
         ) : (
           <p className={styles.full}>That's the most ingredients a recipe can have.</p>
         )}

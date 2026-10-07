@@ -1,14 +1,8 @@
-import { useId, useState, type FormEvent } from 'react'
+import { useId, useRef, useState, type FormEvent } from 'react'
 import { useStore } from '../../app/useStore'
 import { useToday } from '../../app/useToday'
-import {
-  LIMITS,
-  makeMyId,
-  myIngredientSchema,
-  type HarvestStatus,
-  type Ingredient,
-  type IngredientId,
-} from '../../domain'
+import { LIMITS, type HarvestStatus, type Ingredient, type IngredientId } from '../../domain'
+import { Announcer } from '../../ui/Announcer'
 import { Button } from '../../ui/Button'
 import { Notice } from '../../ui/Notice'
 import { SearchField } from '../../ui/SearchField'
@@ -16,7 +10,11 @@ import { SegmentedControl } from '../../ui/SegmentedControl'
 import { Sheet } from '../../ui/Sheet'
 import { TextField } from '../../ui/TextField'
 import { ToggleChip } from '../../ui/ToggleChip'
-import { growables, inSeason, matchesQuery, monthName, monthOf, STATUS_OPTIONS } from './crops'
+import { useAnnouncer } from '../../ui/useAnnouncer'
+import { findOrMakeIngredient } from '../shared/ingredients'
+import { matchesQuery, midSentence, plural } from '../shared/text'
+import { useResultsAnnouncement } from '../shared/useResultsAnnouncement'
+import { addedToPatch, growables, inSeason, monthName, monthOf, STATUS_OPTIONS, tookOffPatch } from './crops'
 import styles from './Patch.module.css'
 
 export interface PatchPickerProps {
@@ -31,6 +29,7 @@ export function PatchPicker({ open, onClose }: PatchPickerProps) {
       open={open}
       onClose={onClose}
       title="Add to the patch"
+      tall
       footer={
         <Button fullWidth onClick={onClose}>
           Done
@@ -42,11 +41,15 @@ export function PatchPicker({ open, onClose }: PatchPickerProps) {
   )
 }
 
+const NOTHING_FOUND = 'Nothing on the list matches that. You can add it yourself below.'
+
 function PickerBody() {
   const { state, dispatch, catalogue } = useStore()
   const today = useToday()
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<HarvestStatus>('ready')
+  // Inside the sheet: anything behind an open modal isn't read out.
+  const [announcement, announce] = useAnnouncer()
 
   const month = monthOf(today)
   const onPatch = new Set(state.harvest.map((item) => item.ingredientId))
@@ -54,15 +57,24 @@ function PickerBody() {
   const seasonal = found.filter((ingredient) => inSeason(ingredient, month))
   const others = found.filter((ingredient) => !inSeason(ingredient, month))
 
-  const setOnPatch = (id: IngredientId, on: boolean) =>
+  useResultsAnnouncement(
+    announce,
+    query,
+    found.length === 0 ? NOTHING_FOUND : `${plural(found.length, 'crop', 'crops')} found.`,
+  )
+
+  const setOnPatch = (crop: Ingredient, on: boolean) => {
     dispatch(
       on
-        ? { type: 'harvest/add', ingredientId: id, status, glut: false, today }
-        : { type: 'harvest/remove', ingredientId: id },
+        ? { type: 'harvest/add', ingredientId: crop.id, status, today }
+        : { type: 'harvest/remove', ingredientId: crop.id },
     )
+    announce(on ? addedToPatch(crop.name) : tookOffPatch(crop.name))
+  }
 
   return (
     <div className={styles.picker}>
+      <Announcer message={announcement} />
       <div className={styles.pickerTop}>
         <SearchField
           label="Find a crop"
@@ -90,13 +102,9 @@ function PickerBody() {
       {others.length > 0 && (
         <ChipGroup title="Everything else" crops={others} onPatch={onPatch} onChange={setOnPatch} />
       )}
-      {found.length === 0 && (
-        <p className={styles.nothingFound} role="status">
-          Nothing on the list matches that. You can add it yourself below.
-        </p>
-      )}
+      {found.length === 0 && <p className={styles.nothingFound}>{NOTHING_FOUND}</p>}
 
-      <NewCrop status={status} />
+      <NewCrop status={status} announce={announce} />
     </div>
   )
 }
@@ -105,7 +113,7 @@ interface ChipGroupProps {
   title: string
   crops: readonly Ingredient[]
   onPatch: ReadonlySet<IngredientId>
-  onChange: (id: IngredientId, on: boolean) => void
+  onChange: (crop: Ingredient, on: boolean) => void
 }
 
 function ChipGroup({ title, crops, onPatch, onChange }: ChipGroupProps) {
@@ -118,7 +126,7 @@ function ChipGroup({ title, crops, onPatch, onChange }: ChipGroupProps) {
       <ul role="list" className={styles.chips}>
         {crops.map((crop) => (
           <li key={crop.id}>
-            <ToggleChip pressed={onPatch.has(crop.id)} onPressedChange={(on) => onChange(crop.id, on)}>
+            <ToggleChip pressed={onPatch.has(crop.id)} onPressedChange={(on) => onChange(crop, on)}>
               {crop.name}
             </ToggleChip>
           </li>
@@ -128,58 +136,52 @@ function ChipGroup({ title, crops, onPatch, onChange }: ChipGroupProps) {
   )
 }
 
-/** "Not on the list?": the person's own crop, straight onto the patch. */
-function NewCrop({ status }: { status: HarvestStatus }) {
+interface NewCropProps {
+  status: HarvestStatus
+  announce: (text: string) => void
+}
+
+/**
+ * "Not on the list?": anything typed goes on the patch. A name already known
+ * (even one that isn't grown, like mushrooms) is used as it is; otherwise it
+ * becomes a crop of the person's own.
+ */
+function NewCrop({ status, announce }: NewCropProps) {
   const { state, dispatch, catalogue } = useStore()
   const today = useToday()
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [added, setAdded] = useState('')
+  const nameField = useRef<HTMLInputElement>(null)
   const headingId = useId()
+
+  function fail(message: string) {
+    setError(message)
+    setAdded('')
+    // The message is tied to the field, so it's read out with it.
+    nameField.current?.focus()
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    const trimmed = name.trim()
-    if (trimmed === '') {
-      setError('Give it a name first.')
+    const result = findOrMakeIngredient(catalogue, { name, aisle: 'veg', grows: true }, state.myIngredients.length)
+    if (!result.ok) {
+      fail(result.error)
       return
     }
-
-    // Already on the list under that name: use it rather than making a twin.
-    const existing = growables(catalogue).find(
-      (ingredient) => ingredient.name.toLocaleLowerCase('en-GB') === trimmed.toLocaleLowerCase('en-GB'),
-    )
-    if (existing) {
-      dispatch({ type: 'harvest/add', ingredientId: existing.id, status, glut: false, today })
-      finish(existing.name)
+    const { ingredient, isNew } = result
+    if (ingredient.assumed) {
+      // Salt and water would make every recipe "from the patch".
+      fail(`No need, ${midSentence(ingredient.name)} is always counted as in the larder.`)
       return
     }
-
-    if (state.myIngredients.length >= LIMITS.myIngredients) {
-      setError("You've added as many of your own as the app can hold.")
-      return
-    }
-    const parsed = myIngredientSchema.safeParse({
-      id: makeMyId(trimmed),
-      name: trimmed,
-      aisle: 'veg',
-      growable: true,
-      art: 'seedling',
-      harvestMonths: [],
-    } satisfies Ingredient)
-    if (!parsed.success) {
-      setError("That name won't work. Try a shorter one.")
-      return
-    }
-    dispatch({ type: 'myIngredients/add', ingredient: parsed.data })
-    dispatch({ type: 'harvest/add', ingredientId: parsed.data.id, status, glut: false, today })
-    finish(trimmed)
-  }
-
-  function finish(addedName: string) {
+    if (isNew) dispatch({ type: 'myIngredients/add', ingredient })
+    dispatch({ type: 'harvest/add', ingredientId: ingredient.id, status, today })
+    const message = addedToPatch(ingredient.name)
     setName('')
     setError('')
-    setAdded(addedName)
+    setAdded(message)
+    announce(message)
   }
 
   return (
@@ -189,6 +191,7 @@ function NewCrop({ status }: { status: HarvestStatus }) {
       </h3>
       <form className={styles.newCropForm} onSubmit={submit} noValidate>
         <TextField
+          ref={nameField}
           label="Name"
           value={name}
           onChange={(next) => {
@@ -202,12 +205,12 @@ function NewCrop({ status }: { status: HarvestStatus }) {
           placeholder="e.g. Oca"
         />
         <Button type="submit" variant="secondary" icon="plus">
-          Add to patch
+          Add to the patch
         </Button>
       </form>
       {added && (
-        <Notice tone="success">
-          {added} is on the patch.
+        <Notice tone="success" live={false}>
+          {added}
         </Notice>
       )}
     </section>

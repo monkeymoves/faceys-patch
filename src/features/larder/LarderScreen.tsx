@@ -3,6 +3,7 @@ import { useStore } from '../../app/useStore'
 import { Art } from '../../art/Art'
 import { STARTER_LARDER } from '../../data'
 import { AISLE_LABELS, type Ingredient, type IngredientId } from '../../domain'
+import { Announcer } from '../../ui/Announcer'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
 import { Icon } from '../../ui/icons'
@@ -10,12 +11,17 @@ import { Page } from '../../ui/Page'
 import { ScreenTitle } from '../../ui/ScreenTitle'
 import { SearchField } from '../../ui/SearchField'
 import { ToggleChip } from '../../ui/ToggleChip'
-import { NewIngredient } from './NewIngredient'
-import { byAisle, matchesQuery, stockable } from './stock'
+import { useAnnouncer } from '../../ui/useAnnouncer'
+import { matchesQuery, plural } from '../shared/text'
+import { useResultsAnnouncement } from '../shared/useResultsAnnouncement'
+import { NewLarderItem } from './NewLarderItem'
+import { addedToLarder, byAisle, stockable, tookOutOfLarder } from './stock'
 import styles from './Larder.module.css'
 
 /** Search results beyond this ask for a few more letters, so the list stays short. */
 const MAX_RESULTS = 30
+
+const NOTHING_FOUND = 'Nothing on the list matches that. You can add it yourself below.'
 
 /** What's in the cupboard and fridge. Tap to take out or put in. */
 export function LarderScreen() {
@@ -25,6 +31,7 @@ export function LarderScreen() {
   // tap to undo and focus never vanishes from under the person.
   const [takenOut, setTakenOut] = useState<ReadonlySet<IngredientId>>(new Set())
   const [putIn, setPutIn] = useState<ReadonlySet<IngredientId>>(new Set())
+  const [announcement, announce] = useAnnouncer()
   const shelfHeading = useRef<HTMLHeadingElement>(null)
   const focusShelfNext = useRef(false)
   const shelfId = useId()
@@ -46,19 +53,27 @@ export function LarderScreen() {
   const searching = query.trim() !== ''
   const results = searching ? everything.filter((ingredient) => matchesQuery(ingredient.name, query)) : []
 
-  function setStocked(id: IngredientId, on: boolean) {
+  useResultsAnnouncement(
+    announce,
+    query,
+    results.length === 0 ? NOTHING_FOUND : `${plural(results.length, 'thing', 'things')} found.`,
+  )
+
+  function setStocked({ id, name }: Ingredient, on: boolean) {
     if (on) {
       dispatch({ type: 'larder/add', ingredientIds: [id] })
       setPutIn((current) => new Set(current).add(id))
+      announce(addedToLarder(name))
       return
     }
     dispatch({ type: 'larder/remove', ingredientId: id })
     setTakenOut((current) => new Set(current).add(id))
+    announce(tookOutOfLarder(name))
   }
 
   const chip = (ingredient: Ingredient) => (
     <li key={ingredient.id}>
-      <ToggleChip pressed={inLarder.has(ingredient.id)} onPressedChange={(on) => setStocked(ingredient.id, on)}>
+      <ToggleChip pressed={inLarder.has(ingredient.id)} onPressedChange={(on) => setStocked(ingredient, on)}>
         {ingredient.name}
       </ToggleChip>
     </li>
@@ -67,6 +82,7 @@ export function LarderScreen() {
   return (
     <Page>
       <ScreenTitle>Larder</ScreenTitle>
+      <Announcer message={announcement} />
 
       {onShelf.length === 0 ? (
         <EmptyState
@@ -77,6 +93,7 @@ export function LarderScreen() {
               icon="plus"
               onClick={() => {
                 dispatch({ type: 'larder/add', ingredientIds: STARTER_LARDER })
+                announce(`Added ${plural(STARTER_LARDER.length, 'thing', 'things')} to the larder.`)
                 focusShelfNext.current = true
               }}
             >
@@ -123,7 +140,7 @@ export function LarderScreen() {
         )}
       </section>
 
-      <NewIngredient />
+      <NewLarderItem announce={announce} />
     </Page>
   )
 }
@@ -133,13 +150,7 @@ interface ListProps {
 }
 
 function SearchResults({ results, renderChip }: ListProps & { results: readonly Ingredient[] }) {
-  if (results.length === 0) {
-    return (
-      <p className={styles.note} role="status">
-        Nothing on the list matches that. You can add it yourself below.
-      </p>
-    )
-  }
+  if (results.length === 0) return <p className={styles.note}>{NOTHING_FOUND}</p>
   const shown = results.slice(0, MAX_RESULTS)
   return (
     <>
@@ -159,7 +170,7 @@ function Browse({ groups, renderChip }: ListProps & { groups: ReturnType<typeof 
   return (
     <div role="group" aria-labelledby={headingId} className={styles.browse}>
       <h3 id={headingId} className={styles.subheading}>
-        Browse by aisle
+        Browse everything
       </h3>
       {groups.map(({ aisle, items }) => (
         <details key={aisle} className={styles.details}>

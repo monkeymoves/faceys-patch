@@ -1,6 +1,6 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { AppState, HarvestItem, Recipe } from '../../domain'
+import { LIMITS, type AppState, type HarvestItem, type Recipe } from '../../domain'
 import { renderWithApp } from '../../test/render'
 import { CookScreen } from '../cook/CookScreen'
 
@@ -83,7 +83,10 @@ describe('Recipe view', () => {
 
     expect(view.getByText('1 large, cut into 2cm chunks')).toBeInTheDocument()
     expect(view.getByText('Vegan')).toBeInTheDocument()
-    expect(within(view.getByRole('region', { name: 'Method' })).getAllByRole('listitem')).toHaveLength(5)
+    const steps = within(view.getByRole('region', { name: 'Method' })).getAllByRole('listitem')
+    expect(steps).toHaveLength(5)
+    // The numbers are read out, not hidden.
+    expect(steps[0]).toHaveTextContent(/^Step 1/)
     expect(view.getByRole('button', { name: 'Make my own version' })).toBeInTheDocument()
   })
 
@@ -105,7 +108,7 @@ describe('Recipe view', () => {
       plan: { '2026-10-09': [{ id: 'meal-1', recipeId: 'lemony-courgette-spaghetti', cooked: false }] },
     })
     await user.click(screen.getByRole('button', { name: 'Ratatouille' }))
-    await user.click(within(dialog('Ratatouille')).getByRole('button', { name: 'Add to week' }))
+    await user.click(within(dialog('Ratatouille')).getByRole('button', { name: 'Add to a day' }))
 
     const picker = within(dialog('Which day?'))
     const thisWeek = within(picker.getByRole('region', { name: 'This week' }))
@@ -124,6 +127,25 @@ describe('Recipe view', () => {
     expect(saved()?.plan['2026-10-08']).toEqual([
       { id: expect.stringMatching(/^meal-/), recipeId: 'ratatouille', cooked: false },
     ])
+  })
+
+  it('says which days already have it, while still letting you add it again', async () => {
+    const { user, saved } = renderCook({
+      plan: { '2026-10-09': [{ id: 'meal-1', recipeId: 'ratatouille', cooked: false }] },
+    })
+    await user.click(screen.getByRole('button', { name: 'Ratatouille' }))
+    await user.click(within(dialog('Ratatouille')).getByRole('button', { name: 'Add to a day' }))
+
+    const picker = within(dialog('Which day?'))
+    const friday = picker.getByRole('button', { name: 'Friday 9 October' })
+    expect(friday).toHaveAccessibleDescription('Already planned Ratatouille')
+    expect(picker.getAllByText('Already planned')).toHaveLength(1)
+    expect(picker.getByRole('button', { name: 'Thursday 8 October' })).toHaveAccessibleDescription(
+      'Nothing planned yet',
+    )
+
+    await user.click(friday)
+    expect(saved()?.plan['2026-10-09']).toHaveLength(2)
   })
 })
 
@@ -182,15 +204,60 @@ describe('Writing a recipe', () => {
     await user.type(form.getByRole('textbox', { name: 'Method' }), '{Enter}   {Enter}')
     await user.click(form.getByRole('button', { name: 'Save recipe' }))
 
-    expect(form.getByRole('textbox', { name: 'Title' })).toHaveAccessibleDescription('Give it a name')
+    expect(form.getByRole('textbox', { name: 'Title' })).toHaveAccessibleDescription('Give it a name.')
     expect(form.getByRole('textbox', { name: 'Title' })).toHaveFocus()
-    expect(form.getByText('Add at least one ingredient')).toBeInTheDocument()
-    expect(form.getByRole('textbox', { name: 'Method' })).toHaveAccessibleDescription(/Add at least one step/)
+    expect(form.getByText('Add at least one ingredient.')).toBeInTheDocument()
+    // Said with the search box, where it's fixed, not only on the group round it.
+    expect(form.getByRole('searchbox', { name: 'Add an ingredient' })).toHaveAccessibleDescription(
+      'Add at least one ingredient.',
+    )
+    expect(form.getByRole('textbox', { name: 'Method' })).toHaveAccessibleDescription(/Add at least one step\./)
     expect(form.getByRole('textbox', { name: /Short note/ })).toHaveValue('Lovely with cheese.')
     expect(saved()?.myRecipes).toEqual([])
 
     await user.type(form.getByRole('textbox', { name: 'Title' }), 'Cheese on toast')
-    expect(form.getByRole('textbox', { name: 'Title' })).not.toHaveAccessibleDescription('Give it a name')
+    expect(form.getByRole('textbox', { name: 'Title' })).not.toHaveAccessibleDescription('Give it a name.')
+  })
+
+  it('asks before throwing away a half-written recipe, however it is closed', async () => {
+    const { user } = renderCook()
+    await user.click(screen.getByRole('button', { name: 'Write a recipe' }))
+    const form = within(dialog('Write a recipe'))
+    await user.type(form.getByRole('textbox', { name: 'Title' }), 'Soup')
+
+    for (const close of [
+      () => user.keyboard('{Escape}'),
+      () => user.click(form.getByRole('button', { name: 'Cancel' })),
+      () => user.click(form.getByRole('button', { name: 'Close' })),
+      () => user.click(dialog('Write a recipe')),
+    ]) {
+      await close()
+      const confirm = screen.getByRole('alertdialog', { name: 'Throw this recipe away?' })
+      expect(within(confirm).getByRole('button', { name: 'Keep writing' })).toHaveFocus()
+      await user.click(within(confirm).getByRole('button', { name: 'Keep writing' }))
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(form.getByRole('textbox', { name: 'Title' })).toHaveValue('Soup')
+    }
+
+    // The system back gesture can close the dialog outright; it opens again and asks.
+    act(() => (dialog('Write a recipe') as HTMLDialogElement).close())
+    expect(dialog('Write a recipe')).toHaveAttribute('open')
+    expect(screen.getByRole('alertdialog', { name: 'Throw this recipe away?' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Throw it away' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Write a recipe' })).toHaveFocus()
+  })
+
+  it('closes straight away when nothing has changed', async () => {
+    const { user } = renderCook()
+    await user.click(screen.getByRole('button', { name: 'Ratatouille' }))
+    await user.click(within(dialog('Ratatouille')).getByRole('button', { name: 'Make my own version' }))
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: 'Make it your own' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(dialog('Ratatouille')).toBeInTheDocument()
   })
 
   it('makes a new ingredient inside the form when it is not on the list', async () => {
@@ -261,14 +328,21 @@ describe('Writing a recipe', () => {
     const form = within(dialog('Make it your own'))
     expect(form.getByRole('textbox', { name: 'Title' })).toHaveValue('Ratatouille (my version)')
     expect(form.getByRole('group', { name: 'Aubergines' })).toBeInTheDocument()
+    // The prep has no field of its own, so it joins the amount where you can see and change it.
+    const amount = form.getByRole('textbox', { name: 'Amount of Aubergines' })
+    expect(amount).toHaveValue('1 large, cut into 2cm chunks')
+    expect(amount).toHaveAttribute('maxlength', String(LIMITS.amountLength))
     await user.click(form.getByRole('button', { name: 'Remove Basil' }))
     await user.click(form.getByRole('button', { name: 'Save recipe' }))
 
-    expect(dialog('Ratatouille (my version)')).toBeInTheDocument()
+    const view = dialog('Ratatouille (my version)')
+    expect(view).toBeInTheDocument()
+    // The button that opened the form went with the built-in recipe, so focus lands on Edit.
+    expect(within(view).getByRole('button', { name: 'Edit' })).toHaveFocus()
     const [copy] = saved()?.myRecipes ?? []
     expect(copy?.id).toMatch(/^my-ratatouille-my-version-/)
     expect(copy?.diet).toEqual(['vegan', 'vegetarian'])
-    expect(copy?.ingredients).toContainEqual({ id: 'aubergine', amount: '1 large', prep: 'cut into 2cm chunks' })
+    expect(copy?.ingredients).toContainEqual({ id: 'aubergine', amount: '1 large, cut into 2cm chunks' })
     expect(copy?.ingredients.map((ingredient) => ingredient.id)).not.toContain('basil')
     expect(copy?.steps).toHaveLength(5)
   })
@@ -285,14 +359,18 @@ describe('Writing a recipe', () => {
     await user.click(screen.getByRole('button', { name: "Nan's courgette fritters" }))
     await user.click(within(dialog("Nan's courgette fritters")).getByRole('button', { name: 'Delete' }))
 
-    const confirm = within(dialog('Delete this recipe?'))
+    const confirm = within(screen.getByRole('alertdialog', { name: 'Delete this recipe?' }))
     expect(confirm.getByText(/taken off any days it's planned for/)).toBeInTheDocument()
     await user.click(confirm.getByRole('button', { name: 'Cancel' }))
-    expect(screen.queryByRole('dialog', { name: 'Delete this recipe?' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog', { name: 'Delete this recipe?' })).not.toBeInTheDocument()
     expect(saved()?.myRecipes).toEqual([fritters])
 
     await user.click(within(dialog("Nan's courgette fritters")).getByRole('button', { name: 'Delete' }))
-    await user.click(within(dialog('Delete this recipe?')).getByRole('button', { name: 'Delete recipe' }))
+    await user.click(
+      within(screen.getByRole('alertdialog', { name: 'Delete this recipe?' })).getByRole('button', {
+        name: 'Delete recipe',
+      }),
+    )
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(saved()?.myRecipes).toEqual([])

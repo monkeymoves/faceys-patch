@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { AppState, HarvestItem, Recipe } from '../../domain'
+import { announced } from '../../test/live'
 import { renderWithApp } from '../../test/render'
 import { CookScreen } from './CookScreen'
 
@@ -81,6 +82,9 @@ describe('CookScreen', () => {
     await user.click(screen.getByRole('radio', { name: 'Ready to cook' }))
     expect(card('Lemony courgette spaghetti')).toBeInTheDocument()
     expect(card('Ratatouille')).not.toBeInTheDocument()
+    // How many are left is read out, as the list changes out of sight.
+    const shownCount = screen.getAllByRole('button', { name: /./ }).filter((button) => button.closest('li')).length
+    expect(announced()).toEqual([`${shownCount} ${shownCount === 1 ? 'recipe' : 'recipes'}.`])
 
     await user.click(screen.getByRole('radio', { name: 'Veggie' }))
     expect(card('Ratatouille')).toBeInTheDocument()
@@ -142,17 +146,26 @@ describe('CookScreen', () => {
       harvestMonths: [],
     }
     renderCook({ harvest: [ready(kohlrabi.id)], myIngredients: [kohlrabi] })
-    expect(screen.getByRole('heading', { name: 'No recipes use that yet' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'No recipes use your patch yet' })).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Write a recipe' })).toHaveLength(2)
   })
 
   it('says so when a filter leaves nothing', async () => {
     const { user } = renderCook({ harvest: [ready('kale')] })
     await user.click(screen.getByRole('radio', { name: 'Ready to cook' }))
-    expect(screen.getByRole('heading', { name: 'Nothing ready without a shop' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Nothing is ready to cook as it is' })).toBeInTheDocument()
+    expect(announced()).toEqual(['No recipes to show.'])
 
     await user.click(screen.getByRole('radio', { name: 'Mine' }))
     expect(screen.getByRole('heading', { name: 'No recipes of your own yet' })).toBeInTheDocument()
+  })
+
+  it('ignores a link to an ingredient the app does not know, rather than showing its words', () => {
+    window.location.hash = '#/cook?with=%3Cb%3EFree%20money%3C%2Fb%3E'
+    renderCook()
+    expect(screen.queryByText(/Free money/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Show all, not just/ })).not.toBeInTheDocument()
+    expect(card('Ratatouille')).toBeInTheDocument()
   })
 
   it('opens the recipe when a card is tapped', async () => {

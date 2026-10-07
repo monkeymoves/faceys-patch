@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { buildCatalogue, LIMITS, myRecipeSchema, type Ingredient, type Recipe } from '../../domain'
-import { checkDraft, draftFromRecipe, emptyDraft, makeIngredient, methodSteps, searchIngredients } from './recipeForm'
+import { CATALOGUE } from '../../data'
+import { buildCatalogue, LIMITS, makeMyId, myRecipeSchema, type Ingredient, type Recipe } from '../../domain'
+import { checkDraft, draftFromRecipe, emptyDraft, methodSteps, searchIngredients } from './recipeForm'
 
 const INGREDIENTS: Ingredient[] = [
   { id: 'courgette', name: 'Courgettes', aisle: 'veg', growable: true, art: 'courgette', harvestMonths: [7] },
@@ -23,9 +24,9 @@ describe('checkDraft', () => {
     expect(result).toEqual({
       ok: false,
       errors: {
-        title: 'Give it a name',
-        ingredients: 'Add at least one ingredient',
-        method: 'Add at least one step',
+        title: 'Give it a name.',
+        ingredients: 'Add at least one ingredient.',
+        method: 'Add at least one step.',
       },
     })
   })
@@ -35,13 +36,31 @@ describe('checkDraft', () => {
     const many = Array.from({ length: LIMITS.steps + 1 }, (_, index) => `Step ${index}`).join('\n')
     expect(checkDraft({ ...emptyDraft(), title: 'A', rows, method: many }, 'my-a-00000', catalogue)).toMatchObject({
       ok: false,
-      errors: { method: `Keep it to ${LIMITS.steps} steps or fewer` },
+      errors: { method: `Keep it to ${LIMITS.steps} steps or fewer.` },
     })
     const long = 'x'.repeat(LIMITS.stepLength + 1)
     expect(checkDraft({ ...emptyDraft(), title: 'A', rows, method: long }, 'my-a-00000', catalogue)).toMatchObject({
       ok: false,
       errors: { method: expect.stringContaining('Try splitting') },
     })
+  })
+
+  it('marks just the ingredient whose amount is too long, in plain words', () => {
+    const rows = [
+      { id: 'courgette', amount: '2', optional: false },
+      { id: 'bacon', amount: 'x'.repeat(LIMITS.amountLength + 1), optional: false },
+    ]
+    const result = checkDraft({ ...emptyDraft(), title: 'A', rows, method: 'Cook.' }, 'my-a-00000', catalogue)
+    expect(result).toEqual({
+      ok: false,
+      errors: { rows: { bacon: `Keep the amount to ${LIMITS.amountLength} characters or fewer.` } },
+    })
+  })
+
+  it('marks the ingredient whose kept prep is too long for the saved state', () => {
+    const rows = [{ id: 'bacon', amount: '4', optional: false, prep: 'y'.repeat(LIMITS.prepLength + 1) }]
+    const result = checkDraft({ ...emptyDraft(), title: 'A', rows, method: 'Cook.' }, 'my-a-00000', catalogue)
+    expect(result).toMatchObject({ ok: false, errors: { rows: { bacon: expect.stringContaining('shortening') } } })
   })
 
   it('builds a recipe that passes the saved-state schema, with the diet worked out', () => {
@@ -94,17 +113,33 @@ describe('draftFromRecipe', () => {
     steps: ['Shred.', 'Dress.'],
   }
 
-  it('fills the form, marking a copy as your version', () => {
+  it('fills the form, marking a copy as your version and folding the prep into the amount', () => {
     expect(draftFromRecipe(recipe, true)).toEqual({
       title: 'Red cabbage slaw (my version)',
       note: 'Crunchy.',
       minutes: 15,
       serves: 4,
       course: 'salad',
-      rows: [{ id: 'red-cabbage', amount: '1/2', optional: false, prep: 'shredded' }],
+      rows: [{ id: 'red-cabbage', amount: '1/2, shredded', optional: false }],
       method: 'Shred.\nDress.',
     })
     expect(draftFromRecipe(recipe, false).title).toBe('Red cabbage slaw')
+  })
+
+  it('keeps the prep apart when amount and prep together would be too long to save', () => {
+    const amount = 'a'.repeat(LIMITS.amountLength - 5)
+    const long = { ...recipe, ingredients: [{ id: 'red-cabbage', amount, prep: 'finely shredded' }] }
+    expect(draftFromRecipe(long, true).rows).toEqual([
+      { id: 'red-cabbage', amount, optional: false, prep: 'finely shredded' },
+    ])
+  })
+
+  it('can copy and save every built-in recipe as it stands', () => {
+    const problems = CATALOGUE.recipes.flatMap((builtIn) => {
+      const result = checkDraft(draftFromRecipe(builtIn, true), makeMyId(builtIn.title), CATALOGUE)
+      return result.ok ? [] : [{ id: builtIn.id, errors: result.errors }]
+    })
+    expect(problems).toEqual([])
   })
 })
 
@@ -117,24 +152,3 @@ describe('searchIngredients', () => {
   })
 })
 
-describe('makeIngredient', () => {
-  it('makes a growable one with the seedling drawing', () => {
-    const result = makeIngredient({ name: ' Kohlrabi ', aisle: 'veg', grows: true }, 0)
-    expect(result).toEqual({
-      ok: true,
-      ingredient: {
-        id: expect.stringMatching(/^my-kohlrabi-[a-z0-9]{5}$/),
-        name: 'Kohlrabi',
-        aisle: 'veg',
-        growable: true,
-        art: 'seedling',
-        harvestMonths: [],
-      },
-    })
-  })
-
-  it('refuses a blank name or one too many', () => {
-    expect(makeIngredient({ name: ' ', aisle: 'veg', grows: false }, 0)).toEqual({ ok: false, error: 'Give it a name' })
-    expect(makeIngredient({ name: 'Yuzu', aisle: 'fruit', grows: false }, LIMITS.myIngredients).ok).toBe(false)
-  })
-})

@@ -14,9 +14,11 @@ import {
   type ISODate,
   type MealPlan,
   type Recipe,
+  type RecipeId,
   type RecipeMatch,
   type Supplies,
 } from '../../domain'
+import { midSentence } from '../shared/text'
 
 /** One ingredient line in the recipe view. */
 export interface IngredientLine {
@@ -66,11 +68,6 @@ export function dietLabel(recipe: Recipe): string | undefined {
   return undefined
 }
 
-/** A name that reads naturally mid-sentence: 'Lemon' becomes 'lemon'. */
-export function lowerName(ingredient: Ingredient): string {
-  return ingredient.name.toLocaleLowerCase('en-GB')
-}
-
 export interface VegDrawing {
   art: ArtKey
   name: string
@@ -80,7 +77,7 @@ export interface VegDrawing {
 export function patchDrawings(ids: readonly IngredientId[], catalogue: Catalogue): VegDrawing[] {
   return ids.flatMap((id) => {
     const ingredient = catalogue.ingredients.get(id)
-    return ingredient ? [{ art: ingredient.art ?? 'seedling', name: lowerName(ingredient) }] : []
+    return ingredient ? [{ art: ingredient.art ?? 'seedling', name: midSentence(ingredient.name) }] : []
   })
 }
 
@@ -88,17 +85,12 @@ export function patchDrawings(ids: readonly IngredientId[], catalogue: Catalogue
 export function missingNames(ids: readonly IngredientId[], catalogue: Catalogue): string[] {
   return ids.flatMap((id) => {
     const ingredient = catalogue.ingredients.get(id)
-    return ingredient ? [lowerName(ingredient)] : []
+    return ingredient ? [midSentence(ingredient.name)] : []
   })
 }
 
 /** Courses for the "Meals" section of Cook. The rest are bakes, puddings and preserves. */
 export const MEAL_COURSES: ReadonlySet<Course> = new Set<Course>(['main', 'soup', 'salad', 'side'])
-
-/** Lower-case, accents off, single spaces: so 'gruyere' finds 'Gruyère'. */
-export function normalise(text: string): string {
-  return text.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('en-GB').replace(/\s+/g, ' ').trim()
-}
 
 /** Titles of the known recipes planned on `date`, in plan order. */
 export function plannedTitles(plan: MealPlan, date: ISODate, catalogue: Catalogue): string[] {
@@ -109,6 +101,8 @@ export interface DayChoice {
   date: ISODate
   today: boolean
   planned: string[]
+  /** The recipe being added is already on this day. */
+  alreadyPlanned: boolean
 }
 
 export interface DayChoiceGroup {
@@ -119,8 +113,13 @@ export interface DayChoiceGroup {
 
 const WEEK_LABELS = ['This week', 'Next week', 'The week after'] as const
 
-/** Today plus the next 13 days, grouped by calendar week (Monday first). */
-export function upcomingDays(today: ISODate, plan: MealPlan, catalogue: Catalogue): DayChoiceGroup[] {
+/** Today plus the next 13 days, grouped by calendar week (Monday first), noting days that already have `recipeId`. */
+export function upcomingDays(
+  today: ISODate,
+  plan: MealPlan,
+  catalogue: Catalogue,
+  recipeId?: RecipeId,
+): DayChoiceGroup[] {
   const thisWeek = startOfWeek(today)
   const weekStarts = WEEK_LABELS.map((_, index) => addDays(thisWeek, index * 7))
   const groups: DayChoiceGroup[] = []
@@ -132,7 +131,12 @@ export function upcomingDays(today: ISODate, plan: MealPlan, catalogue: Catalogu
       group = { label, days: [] }
       groups.push(group)
     }
-    group.days.push({ date, today: offset === 0, planned: plannedTitles(plan, date, catalogue) })
+    group.days.push({
+      date,
+      today: offset === 0,
+      planned: plannedTitles(plan, date, catalogue),
+      alreadyPlanned: recipeId !== undefined && (plan[date] ?? []).some((meal) => meal.recipeId === recipeId),
+    })
   }
   return groups
 }

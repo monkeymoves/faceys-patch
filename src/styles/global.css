@@ -17,10 +17,18 @@
 
 html {
   color-scheme: light;
+  /* Keep whatever has focus clear of the fixed tab bar when the page scrolls to it. */
+  scroll-padding-bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom) + var(--space-4));
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
   background-color: var(--paper);
+}
+
+@media (min-width: 900px) {
+  html {
+    scroll-padding-bottom: 0;
+  }
 }
 
 /* Stop the page scrolling behind an open sheet */
@@ -64,7 +72,8 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
+button:disabled,
+button[aria-disabled='true'] {
   cursor: not-allowed;
 }
 

@@ -1,17 +1,20 @@
 import { useId, useState, type KeyboardEvent } from 'react'
 import { useStore } from '../../app/useStore'
 import { Art } from '../../art/Art'
-import { AISLE_LABELS, AISLES, LIMITS, type Aisle, type Ingredient, type IngredientId } from '../../domain'
+import { LIMITS, type Aisle, type Ingredient, type IngredientId } from '../../domain'
+import { Announcer } from '../../ui/Announcer'
 import { Button } from '../../ui/Button'
 import { Checkbox } from '../../ui/Checkbox'
 import { Icon } from '../../ui/icons'
 import { SearchField } from '../../ui/SearchField'
 import { Select } from '../../ui/Select'
 import { TextField } from '../../ui/TextField'
-import { findByName, makeIngredient, searchIngredients } from './recipeForm'
+import { useAnnouncer } from '../../ui/useAnnouncer'
+import { AISLE_OPTIONS, findOrMakeIngredient } from '../shared/ingredients'
+import { capitalise, plural } from '../shared/text'
+import { useResultsAnnouncement } from '../shared/useResultsAnnouncement'
+import { searchIngredients } from './recipeForm'
 import styles from './RecipeForm.module.css'
-
-const AISLE_OPTIONS = AISLES.map((aisle) => ({ value: aisle, label: AISLE_LABELS[aisle] }))
 
 export interface IngredientAdderProps {
   /** Ingredients already in the recipe, left out of the results. */
@@ -19,14 +22,25 @@ export interface IngredientAdderProps {
   onAdd: (ingredient: Ingredient) => void
   /** Marks the search box as the place to fix "Add at least one ingredient". */
   invalid?: boolean
+  /** Id of that error message, so it's read out with the search box. */
+  errorId?: string
 }
 
 /** Search the ingredient list to add one, or make a new one with "Not on the list?". */
-export function IngredientAdder({ chosen, onAdd, invalid = false }: IngredientAdderProps) {
+export function IngredientAdder({ chosen, onAdd, invalid = false, errorId }: IngredientAdderProps) {
   const { catalogue } = useStore()
   const [query, setQuery] = useState('')
   const [creating, setCreating] = useState(false)
+  const [announcement, announce] = useAnnouncer()
   const results = searchIngredients(catalogue, query, chosen)
+
+  useResultsAnnouncement(
+    announce,
+    query,
+    results.length === 0
+      ? `Nothing called ${query.trim()} on the list.`
+      : `${plural(results.length, 'ingredient', 'ingredients')} found.`,
+  )
 
   function add(ingredient: Ingredient) {
     setQuery('')
@@ -43,6 +57,7 @@ export function IngredientAdder({ chosen, onAdd, invalid = false }: IngredientAd
 
   return (
     <div className={styles.adder}>
+      <Announcer message={announcement} />
       <SearchField
         label="Add an ingredient"
         value={query}
@@ -50,6 +65,7 @@ export function IngredientAdder({ chosen, onAdd, invalid = false }: IngredientAd
         placeholder="Start typing, e.g. vinegar"
         onKeyDown={onSearchKeyDown}
         aria-invalid={invalid ? true : undefined}
+        aria-describedby={invalid ? errorId : undefined}
         data-ingredient-search=""
       />
       <div>
@@ -78,7 +94,7 @@ export function IngredientAdder({ chosen, onAdd, invalid = false }: IngredientAd
           ))}
       </div>
       {creating ? (
-        <NewIngredient
+        <NewIngredientForm
           startName={query}
           onCancel={() => setCreating(false)}
           onMade={(ingredient) => {
@@ -101,16 +117,14 @@ export function IngredientAdder({ chosen, onAdd, invalid = false }: IngredientAd
   )
 }
 
-const capitalise = (text: string) => text.charAt(0).toLocaleUpperCase('en-GB') + text.slice(1)
-
-interface NewIngredientProps {
+interface NewIngredientFormProps {
   startName: string
   onCancel: () => void
   onMade: (ingredient: Ingredient) => void
 }
 
-/** A small inline form for an ingredient of the person's own. */
-function NewIngredient({ startName, onCancel, onMade }: NewIngredientProps) {
+/** A small inline form for an ingredient of the person's own. A name already on the list is reused. */
+function NewIngredientForm({ startName, onCancel, onMade }: NewIngredientFormProps) {
   const { state, dispatch, catalogue } = useStore()
   const [name, setName] = useState(() => capitalise(startName.trim()))
   const [aisle, setAisle] = useState<Aisle>('veg')
@@ -119,17 +133,12 @@ function NewIngredient({ startName, onCancel, onMade }: NewIngredientProps) {
   const headingId = useId()
 
   function make() {
-    const existing = findByName(catalogue, name)
-    if (existing) {
-      onMade(existing)
-      return
-    }
-    const result = makeIngredient({ name, aisle, grows }, state.myIngredients.length)
+    const result = findOrMakeIngredient(catalogue, { name, aisle, grows }, state.myIngredients.length)
     if (!result.ok) {
       setError(result.error)
       return
     }
-    dispatch({ type: 'myIngredients/add', ingredient: result.ingredient })
+    if (result.isNew) dispatch({ type: 'myIngredients/add', ingredient: result.ingredient })
     onMade(result.ingredient)
   }
 
@@ -151,7 +160,7 @@ function NewIngredient({ startName, onCancel, onMade }: NewIngredientProps) {
         autoFocus
       />
       <Select label="Aisle" options={AISLE_OPTIONS} value={aisle} onChange={setAisle} />
-      <Checkbox label="I grow this" hint="So you can add it to your patch" checked={grows} onCheckedChange={setGrows} />
+      <Checkbox label="I grow this" hint="So you can add it to your patch." checked={grows} onCheckedChange={setGrows} />
       <div className={styles.newActions}>
         <Button size="sm" onClick={make}>
           Add it

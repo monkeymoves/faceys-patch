@@ -10,31 +10,32 @@ import {
   findRecipe,
   formatLongDate,
   formatMonthLabel,
-  formatWeekRange,
+  knownMeals,
   parseISODate,
   planWeek,
   weekDates,
   type ISODate,
   type PlannedMeal,
 } from '../../domain'
+import { Announcer } from '../../ui/Announcer'
 import { Button } from '../../ui/Button'
 import { DayCard } from '../../ui/DayCard'
-import { IconButton } from '../../ui/IconButton'
 import { Notice } from '../../ui/Notice'
 import { Page } from '../../ui/Page'
+import { PeriodNav } from '../../ui/PeriodNav'
 import { ScreenTitle } from '../../ui/ScreenTitle'
 import { SegmentedControl } from '../../ui/SegmentedControl'
+import { useAnnouncer } from '../../ui/useAnnouncer'
 import { RecipeFlow, type RecipeFlowState } from '../recipes/RecipeFlow'
+import { weekLabel } from '../shared/weeks'
 import { MealPickerSheet } from './MealPickerSheet'
 import { MonthView } from './MonthView'
 import {
   dayName,
   fillOutcome,
   fillState,
-  knownMeals,
   monthOfWeek,
   shiftMonth,
-  weekTitle,
   type FillOutcome,
   type MonthRef,
 } from './weekPlan'
@@ -59,10 +60,10 @@ export function WeekScreen() {
   const [flow, setFlow] = useState<RecipeFlowState | null>(null)
   const [addingTo, setAddingTo] = useState<ISODate | null>(null)
   const [outcome, setOutcome] = useState<(FillOutcome & { weekStart: ISODate }) | null>(null)
+  const [announcement, announce] = useAnnouncer()
   const focusDay = useRef<ISODate | null>(null)
-  const previousRef = useRef<HTMLButtonElement>(null)
   const daysRef = useRef<HTMLUListElement>(null)
-  const outcomeRef = useRef<HTMLDivElement>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
   const fillHintId = useId()
 
   // After jumping from the month to a week, land on the day that was tapped.
@@ -73,31 +74,34 @@ export function WeekScreen() {
     daysRef.current?.querySelector<HTMLElement>(`[aria-label="Add a meal to ${formatLongDate(date)}"]`)?.focus()
   }, [view, weekStart])
 
-  // After "Fill my week", read out what happened (the button may now be disabled).
-  useEffect(() => {
-    if (outcome) outcomeRef.current?.focus()
-  }, [outcome])
-
   const todaysMonth = monthOfWeek(thisWeek, today)
   const onThisMonth = month.year === todaysMonth.year && month.month === todaysMonth.month
-  const fill = fillState(weekStart, today, state.plan)
-  const title = view === 'week' ? weekTitle(weekStart, thisWeek) : formatMonthLabel(month.year, month.month)
-  const range = formatWeekRange(weekStart)
+  const fill = fillState(weekStart, today, state.plan, catalogue)
+  const monthLabel = (shown: MonthRef) => formatMonthLabel(shown.year, shown.month)
 
   function changeView(next: View) {
     if (next === 'month') setMonth(monthOfWeek(weekStart, today))
     setView(next)
   }
 
+  function showWeek(date: ISODate) {
+    showWeekOf(date)
+    announce(weekLabel(date, thisWeek))
+  }
+
+  function showMonth(next: MonthRef) {
+    setMonth(next)
+    announce(monthLabel(next))
+  }
+
   function step(by: 1 | -1) {
-    if (view === 'week') showWeekOf(addDays(weekStart, by * 7))
-    else setMonth((current) => shiftMonth(current, by))
+    if (view === 'week') showWeek(addDays(weekStart, by * 7))
+    else showMonth(shiftMonth(month, by))
   }
 
   function backToNow() {
-    if (view === 'week') showWeekOf(today)
-    else setMonth(todaysMonth)
-    previousRef.current?.focus()
+    if (view === 'week') showWeek(thisWeek)
+    else showMonth(todaysMonth)
   }
 
   function fillWeek() {
@@ -111,7 +115,15 @@ export function WeekScreen() {
     )
     const planned = Object.keys(meals).length
     if (planned > 0) dispatch({ type: 'plan/fill', meals })
-    setOutcome({ ...fillOutcome(planned, fill.dates.length, state.harvest.length === 0), weekStart })
+    const result = fillOutcome(planned, fill.dates.length, state.harvest.length === 0)
+    setOutcome({ ...result, weekStart })
+    announce(result.text)
+  }
+
+  function dismissOutcome() {
+    setOutcome(null)
+    // The notice had focus if its close button was used: carry on from the top.
+    headingRef.current?.focus()
   }
 
   function openMeal(date: ISODate, mealId: string) {
@@ -124,34 +136,26 @@ export function WeekScreen() {
   return (
     <Page>
       <ScreenTitle
-        aside={view === 'week' && title !== range ? range : undefined}
-        action={
-          elsewhere && (
-            <Button variant="secondary" size="sm" onClick={backToNow}>
-              {view === 'week' ? 'This week' : 'This month'}
-            </Button>
-          )
-        }
+        ref={headingRef}
+        action={<SegmentedControl label="View" options={VIEWS} value={view} onChange={changeView} />}
       >
-        {title}
+        What's for dinner
       </ScreenTitle>
+      <Announcer message={announcement} />
 
-      <div className={styles.bar}>
-        <IconButton
-          ref={previousRef}
-          icon="chevronLeft"
-          label={view === 'week' ? 'Previous week' : 'Previous month'}
-          variant="secondary"
-          onClick={() => step(-1)}
-        />
-        <SegmentedControl label="View" options={VIEWS} value={view} onChange={changeView} />
-        <IconButton
-          icon="chevronRight"
-          label={view === 'week' ? 'Next week' : 'Next month'}
-          variant="secondary"
-          onClick={() => step(1)}
-        />
-      </div>
+      <PeriodNav
+        className={styles.bar}
+        label={view === 'week' ? weekLabel(weekStart, thisWeek) : monthLabel(month)}
+        previousLabel={view === 'week' ? 'Previous week' : 'Previous month'}
+        nextLabel={view === 'week' ? 'Next week' : 'Next month'}
+        onPrevious={() => step(-1)}
+        onNext={() => step(1)}
+        jump={
+          elsewhere
+            ? { label: view === 'week' ? 'Back to this week' : 'Back to this month', onClick: backToNow }
+            : undefined
+        }
+      />
 
       {view === 'week' ? (
         <>
@@ -178,10 +182,11 @@ export function WeekScreen() {
 
           <div className={styles.fill}>
             {outcome && outcome.weekStart === weekStart && (
-              <div ref={outcomeRef} tabIndex={-1} className={styles.outcome}>
+              <div className={styles.outcome}>
                 <Notice
                   tone={outcome.tone}
-                  onDismiss={() => setOutcome(null)}
+                  live={false}
+                  onDismiss={dismissOutcome}
                   dismissLabel="Dismiss message"
                   action={
                     outcome.toPatch && (
@@ -195,7 +200,14 @@ export function WeekScreen() {
                 </Notice>
               </div>
             )}
-            <Button size="lg" fullWidth disabled={!fill.canFill} aria-describedby={fillHintId} onClick={fillWeek}>
+            {/* aria-disabled, so focus stays here when filling leaves nothing more to fill. */}
+            <Button
+              size="lg"
+              fullWidth
+              aria-disabled={fill.canFill ? undefined : true}
+              aria-describedby={fillHintId}
+              onClick={fillWeek}
+            >
               Fill my week
             </Button>
             <p id={fillHintId} className={styles.fillHint}>
@@ -210,7 +222,7 @@ export function WeekScreen() {
             today={today}
             onPickDay={(date) => {
               focusDay.current = date
-              showWeekOf(date)
+              showWeek(date)
               setView('week')
             }}
           />

@@ -1,17 +1,7 @@
 /* Shop screen. */
 
 .weekBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
   margin-top: var(--space-5);
-}
-
-.weekName {
-  color: var(--ink-2);
-  font-weight: var(--weight-bold);
-  text-align: center;
 }
 
 .list {
@@ -44,6 +34,16 @@
     display: flex;
     flex-wrap: wrap;
   }
+}
+
+.move {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.moveHint {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
 }
 
 .message {

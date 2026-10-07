@@ -8,11 +8,11 @@ export function forRecipes(recipeIds: readonly RecipeId[], catalogue: Catalogue)
   return titles.length > 0 ? `for ${andList.format(titles)}` : ''
 }
 
-/** '3 things put in the larder', or 'Feta put in the larder' for just one. */
+/** '3 things put in the larder.', or 'Feta put in the larder.' for just one. */
 export function movedMessage(names: readonly string[]): string {
   const [only] = names
-  if (names.length === 1 && only) return `${only} put in the larder`
-  return `${names.length} things put in the larder`
+  if (names.length === 1 && only) return `${only} put in the larder.`
+  return `${names.length} things put in the larder.`
 }
 
 /** True when a share sheet was closed without sharing, which is not a problem. */

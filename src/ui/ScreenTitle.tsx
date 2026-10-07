@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { cx } from './cx'
 import { HandNote } from './HandNote'
 import { UnderlineMark } from './marks'
@@ -13,15 +13,17 @@ export interface ScreenTitleProps {
   /** h1 by default: there is one per screen. */
   as?: 'h1' | 'h2'
   id?: string
+  /** The heading itself, e.g. to move focus to it. It takes focus from script only (tabIndex -1). */
+  ref?: Ref<HTMLHeadingElement>
   className?: string
 }
 
 /** The screen heading, underlined with a pen stroke. */
-export function ScreenTitle({ children, aside, action, as: Heading = 'h1', id, className }: ScreenTitleProps) {
+export function ScreenTitle({ children, aside, action, as: Heading = 'h1', id, ref, className }: ScreenTitleProps) {
   return (
     <div className={cx(styles.wrap, className)}>
       <div className={styles.titleRow}>
-        <Heading id={id} className={styles.title}>
+        <Heading ref={ref} id={id} tabIndex={ref ? -1 : undefined} className={styles.title}>
           <span className={styles.text}>
             {children}
             <UnderlineMark className={styles.underline} />

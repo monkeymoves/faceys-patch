@@ -11,9 +11,13 @@ import {
   type RecipeId,
   type RecipeMatch,
 } from '../../domain'
+import { Announcer } from '../../ui/Announcer'
 import { SearchField } from '../../ui/SearchField'
 import { Sheet } from '../../ui/Sheet'
-import { dinnerFirst, missingNames, normalise, patchDrawings } from '../recipes/recipeParts'
+import { useAnnouncer } from '../../ui/useAnnouncer'
+import { dinnerFirst, missingNames, patchDrawings } from '../recipes/recipeParts'
+import { fold, plural } from '../shared/text'
+import { useResultsAnnouncement } from '../shared/useResultsAnnouncement'
 import { dayName } from './weekPlan'
 import styles from './MealPicker.module.css'
 
@@ -29,7 +33,7 @@ export interface MealPickerSheetProps {
 /** "+" on a day: the best matches first, plus a search over every recipe. */
 export function MealPickerSheet({ date, onClose, onPick }: MealPickerSheetProps) {
   return (
-    <Sheet open={date !== null} onClose={onClose} title={date ? `What's for ${dayName(date)}?` : ''}>
+    <Sheet open={date !== null} onClose={onClose} title={date ? `What's for ${dayName(date)}?` : ''} tall>
       {date && <MealChoices date={date} onPick={onPick} />}
     </Sheet>
   )
@@ -44,8 +48,9 @@ function MealChoices({ date, onPick }: { date: ISODate; onPick: (recipeId: Recip
   const { catalogue } = useStore()
   const matches = useMatches()
   const [query, setQuery] = useState('')
+  const [announcement, announce] = useAnnouncer()
   const headingId = useId()
-  const wanted = normalise(query)
+  const wanted = fold(query)
 
   let choices: Choice[]
   if (wanted === '') {
@@ -53,7 +58,7 @@ function MealChoices({ date, onPick }: { date: ISODate; onPick: (recipeId: Recip
   } else {
     const rank = new Map(matches.map((match, index) => [match.recipe.id, { match, index }]))
     choices = catalogue.recipes
-      .filter((recipe) => normalise(recipe.title).includes(wanted))
+      .filter((recipe) => fold(recipe.title).includes(wanted))
       .map((recipe) => ({ recipe, match: rank.get(recipe.id)?.match }))
       .toSorted((a, b) => {
         const ra = rank.get(a.recipe.id)?.index ?? Infinity
@@ -62,8 +67,15 @@ function MealChoices({ date, onPick }: { date: ISODate; onPick: (recipeId: Recip
       })
   }
 
+  useResultsAnnouncement(
+    announce,
+    query,
+    choices.length === 0 ? 'No recipes called that.' : `${plural(choices.length, 'recipe', 'recipes')} found.`,
+  )
+
   return (
     <div className={styles.picker}>
+      <Announcer message={announcement} />
       <p className={styles.lede}>Pick a dinner for {formatLongDate(date)}.</p>
       <SearchField
         label="Search all recipes"

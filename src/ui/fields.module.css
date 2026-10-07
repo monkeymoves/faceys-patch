@@ -43,7 +43,7 @@
 
 .input::placeholder {
   color: var(--ink-2);
-  opacity: 0.85;
+  opacity: 1;
 }
 
 .input:focus {

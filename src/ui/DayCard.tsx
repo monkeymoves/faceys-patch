@@ -1,4 +1,3 @@
-import { useId } from 'react'
 import { cx } from './cx'
 import { Icon } from './icons'
 import { IconButton } from './IconButton'
@@ -28,7 +27,10 @@ export interface DayCardProps {
   className?: string
 }
 
-/** One day in the Week view: day and date in the margin, meals on the right. */
+/**
+ * One day in the Week view: day and date in the margin, meals on the right.
+ * Put it in a list item; its heading is an h2, under the screen's h1.
+ */
 export function DayCard({
   dayName,
   dayNumber,
@@ -41,14 +43,12 @@ export function DayCard({
   emptyText = 'Nothing planned yet',
   className,
 }: DayCardProps) {
-  const headingId = useId()
   return (
-    <section
-      aria-labelledby={headingId}
+    <div
       aria-current={today ? 'date' : undefined}
       className={cx(styles.day, today && styles.today, past && styles.past, className)}
     >
-      <h3 id={headingId} className={styles.date}>
+      <h2 className={styles.date}>
         <span className="visually-hidden">
           {label}
           {today ? ', today' : ''}
@@ -60,7 +60,7 @@ export function DayCard({
           {today && <DateRingMark className={styles.ring} />}
           {dayNumber}
         </span>
-      </h3>
+      </h2>
       <div className={styles.meals}>
         {meals.length === 0 ? (
           <p className={styles.empty}>{emptyText}</p>
@@ -87,6 +87,6 @@ export function DayCard({
         )}
       </div>
       <IconButton icon="plus" label={`Add a meal to ${label}`} onClick={onAddMeal} className={styles.add} />
-    </section>
+    </div>
   )
 }

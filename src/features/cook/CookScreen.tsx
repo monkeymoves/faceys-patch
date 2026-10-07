@@ -4,6 +4,7 @@ import { useNavigation } from '../../app/useNavigation'
 import { useStore } from '../../app/useStore'
 import { Art } from '../../art/Art'
 import type { RecipeId } from '../../domain'
+import { Announcer } from '../../ui/Announcer'
 import { Button } from '../../ui/Button'
 import { EmptyState } from '../../ui/EmptyState'
 import { HandNote } from '../../ui/HandNote'
@@ -12,8 +13,10 @@ import { Page } from '../../ui/Page'
 import { RecipeCard } from '../../ui/RecipeCard'
 import { ScreenTitle } from '../../ui/ScreenTitle'
 import { SegmentedControl } from '../../ui/SegmentedControl'
+import { useAnnouncer } from '../../ui/useAnnouncer'
 import { RecipeFlow, type RecipeFlowState } from '../recipes/RecipeFlow'
-import { lowerName, missingNames, patchDrawings } from '../recipes/recipeParts'
+import { missingNames, patchDrawings } from '../recipes/recipeParts'
+import { midSentence, plural } from '../shared/text'
 import { COOK_FILTERS, cookEntries, emptyFilterCopy, splitByCourse, type CookEntry, type CookFilter } from './cookList'
 import styles from './CookScreen.module.css'
 
@@ -24,15 +27,23 @@ export function CookScreen() {
   const { route, go } = useNavigation()
   const [filter, setFilter] = useState<CookFilter>('all')
   const [flow, setFlow] = useState<RecipeFlowState | null>(null)
+  const [announcement, announce] = useAnnouncer()
 
-  const withId = route.with
-  const withIngredient = withId ? catalogue.ingredients.get(withId) : undefined
-  const withName = withId ? (withIngredient ? lowerName(withIngredient) : withId) : undefined
+  // Only an ingredient the app knows: a crafted link mustn't put its own words on screen.
+  const withIngredient = route.with ? catalogue.ingredients.get(route.with) : undefined
+  const withId = withIngredient?.id
+  const withName = withIngredient ? midSentence(withIngredient.name) : undefined
   const entries = cookEntries(matches, state.myRecipes, filter, withId)
   const { meals, treats } = splitByCourse(entries)
   const gluts = new Set(state.harvest.filter((item) => item.glut).map((item) => item.ingredientId))
   // One "uses your glut" note, on the best meal that does. Bakes and preserves have their own aside.
   const glutPick = meals.find((entry) => entry.match?.fromPatch.some((id) => gluts.has(id)))?.recipe.id
+
+  function changeFilter(next: CookFilter) {
+    setFilter(next)
+    const count = cookEntries(matches, state.myRecipes, next, withId).length
+    announce(count === 0 ? 'No recipes to show.' : `${plural(count, 'recipe', 'recipes')}.`)
+  }
 
   const writeRecipe = () => setFlow({ top: 'new' })
   const openRecipe = (recipeId: RecipeId) => setFlow({ recipeId })
@@ -54,7 +65,7 @@ export function CookScreen() {
       return (
         <EmptyState
           art={<Art name="seedling" size={96} />}
-          title="No recipes use that yet"
+          title="No recipes use your patch yet"
           action={
             <Button icon="pencil" onClick={writeRecipe}>
               Write a recipe
@@ -114,9 +125,10 @@ export function CookScreen() {
       >
         What to cook
       </ScreenTitle>
+      <Announcer message={announcement} />
 
       <div className={styles.filters}>
-        <SegmentedControl label="Show" options={COOK_FILTERS} value={filter} onChange={setFilter} />
+        <SegmentedControl label="Show" options={COOK_FILTERS} value={filter} onChange={changeFilter} />
         {withId && (
           <p className={styles.with}>
             {withIngredient?.art && <Art name={withIngredient.art} size={30} className={styles.withArt} />}

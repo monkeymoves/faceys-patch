@@ -66,9 +66,16 @@ describe('upcomingDays', () => {
       ['Next week', 7],
       ['The week after', 2],
     ])
-    expect(groups[0]?.days[0]).toEqual({ date: '2026-10-07', today: true, planned: [] })
+    expect(groups[0]?.days[0]).toEqual({ date: '2026-10-07', today: true, planned: [], alreadyPlanned: false })
     expect(groups[0]?.days[2]?.planned).toEqual(['Courgette salad'])
+    expect(groups[0]?.days[2]?.alreadyPlanned).toBe(false)
     expect(groups[2]?.days.at(-1)?.date).toBe('2026-10-20')
+  })
+
+  it('notes the days that already have the recipe being added', () => {
+    const plan = { '2026-10-09': [{ id: 'm1', recipeId: 'courgette-salad', cooked: false }] }
+    const days = upcomingDays('2026-10-07', plan, catalogue, 'courgette-salad').flatMap((group) => group.days)
+    expect(days.filter((day) => day.alreadyPlanned).map((day) => day.date)).toEqual(['2026-10-09'])
   })
 
   it('makes exactly two weeks when today is a Monday', () => {

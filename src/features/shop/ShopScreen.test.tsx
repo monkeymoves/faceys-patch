@@ -1,6 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useStore } from '../../app/useStore'
 import type { AppState, HarvestItem, MealPlan } from '../../domain'
+import { announced, shown } from '../../test/live'
 import { renderWithApp } from '../../test/render'
 import { ShopScreen } from './ShopScreen'
 
@@ -50,8 +52,8 @@ describe('ShopScreen', () => {
   it("lists what this week's meals need, by aisle, with the recipes each is for", () => {
     renderWithApp(<ShopScreen />, { state: PLANNED })
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Shopping' })).toBeInTheDocument()
-    expect(screen.getByText('5 to 11 October')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Shopping list' })).toBeInTheDocument()
+    expect(shown('This week, 5 to 11 October')).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
       'Veg',
       'Dairy and eggs',
@@ -70,11 +72,16 @@ describe('ShopScreen', () => {
 
   it('ticks things off and remembers it for the week', async () => {
     const { user, saved } = renderWithApp(<ShopScreen />, { state: PLANNED })
-    expect(screen.getByRole('button', { name: 'Put ticked in the larder' })).toBeDisabled()
+    const move = screen.getByRole('button', { name: 'Put ticked in the larder' })
+    expect(move).toHaveAttribute('aria-disabled', 'true')
+    expect(move).toHaveAccessibleDescription("Tick what you've bought first.")
 
     await user.click(item('Garlic'))
     expect(item('Garlic')).toBeChecked()
     expect(saved()?.shoppingTicks).toEqual({ [WEEK]: ['garlic'] })
+    expect(move).not.toHaveAttribute('aria-disabled')
+    expect(move).not.toHaveAccessibleDescription()
+    expect(screen.queryByText("Tick what you've bought first.")).not.toBeInTheDocument()
 
     await user.click(item('Garlic'))
     expect(item('Garlic')).not.toBeChecked()
@@ -86,10 +93,13 @@ describe('ShopScreen', () => {
     await user.click(item('Garlic'))
     await user.click(item('Eggs'))
     await user.click(item('Peppers'))
-    await user.click(screen.getByRole('button', { name: 'Put ticked in the larder' }))
+    const move = screen.getByRole('button', { name: 'Put ticked in the larder' })
+    await user.click(move)
 
-    expect(screen.getByRole('status')).toHaveTextContent('3 things put in the larder')
-    expect(screen.getByRole('status').parentElement).toHaveFocus()
+    expect(shown('3 things put in the larder.')).toBeInTheDocument()
+    expect(announced()).toEqual(['3 things put in the larder.'])
+    // The button is still there (Aubergines are left), so focus stays on it.
+    expect(move).toHaveFocus()
     expect(saved()?.larder).toEqual(['onion', 'olive-oil', 'garlic', 'egg', 'pepper'])
     expect(saved()?.shoppingTicks).toEqual({})
     expect(screen.getAllByRole('checkbox')).toHaveLength(1)
@@ -100,7 +110,53 @@ describe('ShopScreen', () => {
     const { user } = renderWithApp(<ShopScreen />, { state: PLANNED })
     await user.click(item('Aubergines'))
     await user.click(screen.getByRole('button', { name: 'Put ticked in the larder' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Aubergines put in the larder')
+    expect(announced()).toEqual(['Aubergines put in the larder.'])
+  })
+
+  it('carries on from the heading once the last things are put away, and after the message is dismissed', async () => {
+    const { user } = renderWithApp(<ShopScreen />, {
+      state: { ...PLANNED, plan: { '2026-10-06': [{ id: 'meal-1', recipeId: 'ratatouille', cooked: false }] } },
+    })
+    for (const name of ['Aubergines', 'Garlic', 'Peppers']) await user.click(item(name))
+    await user.click(screen.getByRole('button', { name: 'Put ticked in the larder' }))
+
+    expect(screen.getByRole('heading', { name: 'Nothing to buy' })).toBeInTheDocument()
+    const heading = screen.getByRole('heading', { level: 1, name: 'Shopping list' })
+    expect(heading).toHaveFocus()
+
+    screen.getByRole('button', { name: 'Dismiss' }).focus()
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }))
+    expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument()
+    expect(heading).toHaveFocus()
+  })
+
+  it('only puts away what is ticked on the list now, not ticks left from a meal taken off', async () => {
+    function TakeOffShakshuka() {
+      const { dispatch } = useStore()
+      return (
+        <button type="button" onClick={() => dispatch({ type: 'plan/remove', date: '2026-10-08', mealId: 'meal-2' })}>
+          Take off Shakshuka
+        </button>
+      )
+    }
+    const { user, saved } = renderWithApp(
+      <>
+        <ShopScreen />
+        <TakeOffShakshuka />
+      </>,
+      { state: PLANNED },
+    )
+    // Eggs are only for Shakshuka.
+    await user.click(item('Eggs'))
+    await user.click(screen.getByRole('button', { name: 'Take off Shakshuka' }))
+    expect(screen.queryByRole('checkbox', { name: 'Eggs' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Put ticked in the larder' })).toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(item('Garlic'))
+    await user.click(screen.getByRole('button', { name: 'Put ticked in the larder' }))
+    expect(saved()?.larder).toEqual(['onion', 'olive-oil', 'garlic'])
+    expect(saved()?.shoppingTicks).toEqual({ [WEEK]: ['egg'] })
+    expect(announced()).toEqual(['Garlic put in the larder.'])
   })
 
   describe('Share list', () => {
@@ -113,7 +169,7 @@ describe('ShopScreen', () => {
         title: 'Shopping for 5 to 11 October',
         text: 'Shopping for 5 to 11 October\n\nVeg\n- Aubergines\n- Garlic\n- Peppers',
       })
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(announced()).toEqual([])
     })
 
     it('says nothing when the share sheet is closed without sharing', async () => {
@@ -122,7 +178,7 @@ describe('ShopScreen', () => {
       await user.click(screen.getByRole('button', { name: 'Share list' }))
 
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(announced()).toEqual([])
     })
 
     it('says so when sharing fails', async () => {
@@ -130,7 +186,8 @@ describe('ShopScreen', () => {
       const { user } = renderWithApp(<ShopScreen />, { state: PLANNED })
       await user.click(screen.getByRole('button', { name: 'Share list' }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent("The list couldn't be shared.")
+      await waitFor(() => expect(announced()).toEqual(["The list couldn't be shared. Try again in a moment."]))
+      expect(shown("The list couldn't be shared. Try again in a moment.")).toBeInTheDocument()
     })
 
     it('copies to the clipboard when there is no share sheet', async () => {
@@ -141,7 +198,8 @@ describe('ShopScreen', () => {
       expect(writeText).toHaveBeenCalledWith(
         'Shopping for 5 to 11 October\n\nVeg\n- Aubergines\n- Garlic\n- Peppers\n\nDairy and eggs\n- Eggs',
       )
-      expect(await screen.findByRole('status')).toHaveTextContent('Copied to your clipboard')
+      await waitFor(() => expect(announced()).toEqual(['Copied to your clipboard.']))
+      expect(shown('Copied to your clipboard.')).toBeInTheDocument()
     })
 
     it('says so when the clipboard refuses', async () => {
@@ -149,7 +207,7 @@ describe('ShopScreen', () => {
       vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new DOMException('Denied', 'NotAllowedError'))
       await user.click(screen.getByRole('button', { name: 'Share list' }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent("The list couldn't be copied.")
+      await waitFor(() => expect(announced()).toEqual(["The list couldn't be copied. This browser may not allow it."]))
     })
   })
 
@@ -182,22 +240,30 @@ describe('ShopScreen', () => {
     const { user } = renderWithApp(<ShopScreen />, {
       state: { ...PLANNED, plan: { ...PLAN, '2026-10-14': [{ id: 'meal-9', recipeId: 'gooseberry-fool', cooked: false }] } },
     })
-    expect(screen.queryByRole('button', { name: 'This week' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Back to this week' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Next week' }))
-    expect(screen.getByText('12 to 18 October')).toBeInTheDocument()
-    expect(screen.getByText('Next week', { selector: 'p' })).toBeInTheDocument()
+    expect(shown('Next week, 12 to 18 October')).toBeInTheDocument()
+    expect(announced()).toEqual(['Next week, 12 to 18 October'])
     expect(item('Gooseberries')).toHaveAccessibleDescription('for Gooseberry fool')
     expect(screen.queryByRole('checkbox', { name: 'Aubergines' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Previous week' }))
     await user.click(screen.getByRole('button', { name: 'Previous week' }))
-    expect(screen.getByText('28 September to 4 October')).toBeInTheDocument()
+    expect(shown('Last week, 28 September to 4 October')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Nothing planned that week' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'This week' }))
-    expect(screen.getByText('5 to 11 October')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Back to this week' }))
+    expect(shown('This week, 5 to 11 October')).toBeInTheDocument()
     await waitFor(() => expect(item('Aubergines')).toBeInTheDocument())
-    expect(screen.queryByRole('button', { name: 'This week' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Back to this week' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Previous week' })).toHaveFocus()
+  })
+
+  it('counts a week whose only meal is a recipe that has gone as nothing planned', () => {
+    renderWithApp(<ShopScreen />, {
+      state: { plan: { '2026-10-06': [{ id: 'meal-1', recipeId: 'recipe-that-was-deleted', cooked: false }] } },
+    })
+    expect(screen.getByRole('heading', { name: 'Nothing planned this week' })).toBeInTheDocument()
   })
 })

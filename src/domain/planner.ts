@@ -1,7 +1,17 @@
 import { findRecipe, type Supplies } from './catalogue'
 import { isISODate, startOfWeek, weekDates } from './dates'
 import { compareMatches, matchRecipes, patchPoints } from './matching'
-import type { Course, HarvestItem, IngredientId, ISODate, MealPlan, RecipeId, RecipeMatch } from './types'
+import type {
+  Catalogue,
+  Course,
+  HarvestItem,
+  IngredientId,
+  ISODate,
+  MealPlan,
+  PlannedMeal,
+  RecipeId,
+  RecipeMatch,
+} from './types'
 
 /** Courses the planner may put on a day as dinner. Matching (the Cook screen) still shows every course. */
 export const PLANNABLE_COURSES = ['main', 'soup'] as const satisfies readonly Course[]
@@ -15,7 +25,18 @@ const GLUT_FREE_USES = 2
 /** Soon items stay off this many dates at the start of a run, while there is any alternative. */
 const SOON_HOLD_OFF_DATES = 2
 
-const hasMeals = (plan: MealPlan, date: ISODate) => (plan[date]?.length ?? 0) > 0
+/**
+ * The meals on `date` whose recipe the catalogue still knows, in plan order.
+ * A meal whose recipe has since gone is skipped, never shown blank.
+ */
+export function knownMeals(plan: MealPlan, date: ISODate, catalogue: Catalogue): PlannedMeal[] {
+  return (plan[date] ?? []).filter((meal) => findRecipe(catalogue, meal.recipeId) !== undefined)
+}
+
+/** True if `date` holds a meal you can see. A day holding only a recipe that has gone counts as empty. */
+export function hasKnownMeals(plan: MealPlan, date: ISODate, catalogue: Catalogue): boolean {
+  return knownMeals(plan, date, catalogue).length > 0
+}
 
 /** How much of an ingredient's points still count after `uses` earlier uses this week. */
 function varietyFactor(uses: number, glut: boolean): number {
@@ -68,7 +89,7 @@ export function planWeek(input: PlanWeekInput): Record<ISODate, RecipeId> {
   const usesSoonItem = (match: RecipeMatch) => match.fromPatch.some((id) => harvestById.get(id)?.status === 'soon')
 
   runDates.forEach((date, index) => {
-    if (hasMeals(plan, date)) return
+    if (hasKnownMeals(plan, date, catalogue)) return
     const weekRecipes = recipesInWeekOf(date)
     const excluded = new Set([...weekRecipes, ...chosenInRun])
     const uses = countPatchUses(weekRecipes)

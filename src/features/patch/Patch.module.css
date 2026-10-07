@@ -27,6 +27,10 @@
   }
 }
 
+.removed {
+  margin-top: var(--space-4);
+}
+
 .cookLink {
   display: flex;
   justify-content: center;

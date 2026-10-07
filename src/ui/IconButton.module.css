@@ -14,7 +14,8 @@
     color var(--duration-quick) var(--ease-out);
 }
 
-.button:disabled {
+.button:disabled,
+.button[aria-disabled='true'] {
   opacity: 0.45;
 }
 
@@ -39,19 +40,19 @@
 }
 
 @media (hover: hover) {
-  .ghost:hover:not(:disabled) {
+  .ghost:hover:not(:disabled, [aria-disabled='true']) {
     background-color: var(--paper-2);
   }
 
-  .secondary:hover:not(:disabled) {
+  .secondary:hover:not(:disabled, [aria-disabled='true']) {
     border-color: var(--ink);
   }
 
-  .primary:hover:not(:disabled) {
+  .primary:hover:not(:disabled, [aria-disabled='true']) {
     background-color: var(--leaf-deep);
   }
 }
 
-.button:active:not(:disabled) {
+.button:active:not(:disabled, [aria-disabled='true']) {
   translate: 0 1px;
 }

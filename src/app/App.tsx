@@ -43,7 +43,7 @@ const TITLES: Record<MainTabId, string> = {
   patch: "What's ready",
   larder: 'Larder',
   cook: 'What to cook',
-  week: 'Week',
+  week: "What's for dinner",
   shop: 'Shopping list',
 }
 

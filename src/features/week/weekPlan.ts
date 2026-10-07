@@ -2,7 +2,7 @@ import {
   addDays,
   findRecipe,
   formatLongDate,
-  formatWeekRange,
+  hasKnownMeals,
   parseISODate,
   toISODate,
   weekDates,
@@ -14,28 +14,19 @@ import {
   type PlannedMeal,
 } from '../../domain'
 
-/** 'This week', 'Next week', 'Last week', or the range for any other week. */
-export function weekTitle(weekStart: ISODate, thisWeek: ISODate): string {
-  if (weekStart === thisWeek) return 'This week'
-  if (weekStart === addDays(thisWeek, 7)) return 'Next week'
-  if (weekStart === addDays(thisWeek, -7)) return 'Last week'
-  return formatWeekRange(weekStart)
-}
-
 export type FillState = { canFill: true; dates: ISODate[]; hint: string } | { canFill: false; reason: string }
-
-const hasMeals = (plan: MealPlan, date: ISODate) => (plan[date]?.length ?? 0) > 0
 
 /**
  * Which days "Fill my week" would plan: the empty ones from today onwards, or
- * every empty day in a week that hasn't started. Never a week that's over.
+ * every empty day in a week that hasn't started. Never a week that's over. A
+ * day holding only a recipe that has since gone counts as empty.
  */
-export function fillState(weekStart: ISODate, today: ISODate, plan: MealPlan): FillState {
+export function fillState(weekStart: ISODate, today: ISODate, plan: MealPlan, catalogue: Catalogue): FillState {
   const dates = weekDates(weekStart)
   const started = weekStart <= today
   const remaining = dates.filter((date) => date >= today)
   if (remaining.length === 0) return { canFill: false, reason: "This week's been and gone." }
-  const empty = remaining.filter((date) => !hasMeals(plan, date))
+  const empty = remaining.filter((date) => !hasKnownMeals(plan, date, catalogue))
   if (empty.length === 0) {
     return {
       canFill: false,
@@ -102,11 +93,6 @@ export function shiftMonth({ year, month }: MonthRef, by: number): MonthRef {
 
 export function firstOfMonth({ year, month }: MonthRef): ISODate {
   return toISODate(new Date(year, month - 1, 1))
-}
-
-/** Known meals on a date, so a recipe that's since gone is skipped rather than shown blank. */
-export function knownMeals(plan: MealPlan, date: ISODate, catalogue: Catalogue): PlannedMeal[] {
-  return (plan[date] ?? []).filter((meal) => findRecipe(catalogue, meal.recipeId) !== undefined)
 }
 
 /**

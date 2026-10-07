@@ -1,10 +1,12 @@
 import { useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
 import { useStore } from '../../app/useStore'
-import { MAX_BACKUP_BYTES, parseBackup, type AppState } from '../../domain'
+import { BACKUP_ERRORS, MAX_BACKUP_BYTES, parseBackup, type AppState } from '../../domain'
+import { Announcer } from '../../ui/Announcer'
 import { Button } from '../../ui/Button'
 import { ConfirmDialog } from '../../ui/ConfirmDialog'
 import { Notice, type NoticeTone } from '../../ui/Notice'
 import { Sheet } from '../../ui/Sheet'
+import { useAnnouncer } from '../../ui/useAnnouncer'
 import { backupFileName, backupSummary, downloadBackup } from './backupFile'
 import styles from './Settings.module.css'
 
@@ -20,8 +22,9 @@ interface Message {
   section: 'backup' | 'reset'
 }
 
-const TOO_BIG = "That file is too big to be a Facey's Patch backup."
-const UNREADABLE = "That file can't be read. Choose a backup saved from Facey's Patch."
+/** Some browsers (an iPhone home screen app, for one) can quietly block a download, so don't promise. */
+const downloaded = (now: Date) => `Your backup should now be in your downloads (${backupFileName(now)}).`
+const NOT_MADE = "The backup couldn't be made. Try again in a moment."
 
 /**
  * Backups, starting afresh and installing the app. The confirms sit beside the
@@ -32,6 +35,9 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
   const [message, setMessage] = useState<Message | null>(null)
   const [backup, setBackup] = useState<AppState | null>(null)
   const [confirmingReset, setConfirmingReset] = useState(false)
+  /** What happened to "Download a backup first", shown inside the Start afresh confirm. */
+  const [resetBackupNote, setResetBackupNote] = useState('')
+  const [confirmAnnouncement, announceInConfirm] = useAnnouncer()
   const fileInput = useRef<HTMLInputElement>(null)
 
   const say = (section: Message['section'], tone: NoticeTone, text: string) => setMessage({ section, tone, text })
@@ -41,14 +47,31 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
     onClose()
   }
 
-  function download() {
+  /** Downloads a backup and says how it went. */
+  function makeBackup(): { ok: boolean; text: string } {
     const now = new Date()
     try {
       downloadBackup(state, now)
-      say('backup', 'success', `Backup saved as ${backupFileName(now)}. Keep it somewhere safe.`)
+      return { ok: true, text: downloaded(now) }
     } catch {
-      say('backup', 'problem', "The backup couldn't be made. Try again in a moment.")
+      return { ok: false, text: NOT_MADE }
     }
+  }
+
+  function download() {
+    const { ok, text } = makeBackup()
+    say('backup', ok ? 'success' : 'problem', text)
+  }
+
+  function downloadBeforeReset() {
+    const { text } = makeBackup()
+    setResetBackupNote(text)
+    announceInConfirm(text)
+  }
+
+  function closeResetConfirm() {
+    setConfirmingReset(false)
+    setResetBackupNote('')
   }
 
   async function chooseFile(event: ChangeEvent<HTMLInputElement>) {
@@ -59,14 +82,14 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
     if (!file) return
     setMessage(null)
     if (file.size > MAX_BACKUP_BYTES) {
-      say('backup', 'problem', TOO_BIG)
+      say('backup', 'problem', BACKUP_ERRORS['too-big'])
       return
     }
     let text: string
     try {
       text = await file.text()
     } catch {
-      say('backup', 'problem', UNREADABLE)
+      say('backup', 'problem', BACKUP_ERRORS['not-json'])
       return
     }
     const result = parseBackup(text)
@@ -83,7 +106,7 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
 
   function startAfresh() {
     dispatch({ type: 'state/reset' })
-    setConfirmingReset(false)
+    closeResetConfirm()
     say('reset', 'success', "All cleared. Here's to a fresh start.")
   }
 
@@ -101,7 +124,10 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
           <p className={styles.lede}>Everything is saved on this device. Nothing is sent anywhere.</p>
 
           <Section title="Backup">
-            <p className={styles.text}>Keep a copy somewhere safe, or use one to move everything to a new phone.</p>
+            <p className={styles.text}>
+              Everything lives only on this device, so downloading a backup now and then is wise. Keep it somewhere
+              safe, or use it to move everything to a new phone.
+            </p>
             <div className={styles.buttons}>
               <Button variant="secondary" icon="download" onClick={download}>
                 Download a backup
@@ -124,6 +150,10 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
 
           <Section title="Use it like an app">
             <p className={styles.text}>Put it on your home screen and it opens full screen, even without signal.</p>
+            <p className={styles.text}>
+              <strong>On iPhone, do add it to your Home Screen.</strong> Safari can clear a website's data if you
+              haven't visited for a week or so, but Home Screen apps keep theirs.
+            </p>
             <ul className={styles.steps}>
               <li>
                 <strong>iPhone, in Safari:</strong> tap Share, then Add to Home Screen.
@@ -167,12 +197,15 @@ export function SettingsSheet({ open, onClose }: SettingsSheetProps) {
           <div className={styles.confirmText}>
             <p>This clears your patch, larder, plans and your own recipes on this device. It can't be undone.</p>
             <p>You might like to download a backup first.</p>
+            {resetBackupNote && <p className={styles.confirmNote}>{resetBackupNote}</p>}
+            <Announcer message={confirmAnnouncement} />
           </div>
         }
         confirmLabel="Clear everything"
         destructive
+        otherAction={{ label: 'Download a backup first', icon: 'download', onClick: downloadBeforeReset }}
         onConfirm={startAfresh}
-        onCancel={() => setConfirmingReset(false)}
+        onCancel={closeResetConfirm}
       />
     </>
   )

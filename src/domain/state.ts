@@ -21,7 +21,8 @@ export function initialState(): AppState {
  * ingredients are made by the caller, so the reducer stays pure.
  */
 export type Action =
-  | { type: 'harvest/add'; ingredientId: IngredientId; status: HarvestStatus; glut: boolean; today: ISODate }
+  /** A crop already on the patch keeps its date, and its glut too unless `glut` is given. */
+  | { type: 'harvest/add'; ingredientId: IngredientId; status: HarvestStatus; glut?: boolean; today: ISODate }
   | { type: 'harvest/update'; ingredientId: IngredientId; status?: HarvestStatus; glut?: boolean }
   | { type: 'harvest/remove'; ingredientId: IngredientId }
   | { type: 'larder/add'; ingredientIds: readonly IngredientId[] }
@@ -31,7 +32,8 @@ export type Action =
   | { type: 'plan/setCooked'; date: ISODate; mealId: string; cooked: boolean }
   | { type: 'plan/fill'; meals: Readonly<Record<ISODate, PlannedMeal>> }
   | { type: 'shop/toggle'; weekStart: ISODate; ingredientId: IngredientId }
-  | { type: 'shop/moveTickedToLarder'; weekStart: ISODate }
+  /** `ingredientIds`: the ticked items actually on the list now. Ticks for anything else are left alone. */
+  | { type: 'shop/moveTickedToLarder'; weekStart: ISODate; ingredientIds: readonly IngredientId[] }
   | { type: 'myRecipes/save'; recipe: Recipe }
   | { type: 'myRecipes/remove'; recipeId: RecipeId }
   | { type: 'myIngredients/add'; ingredient: Ingredient }
@@ -110,7 +112,7 @@ function apply(state: AppState, action: Action): AppState {
       if (state.harvest.some((item) => item.ingredientId === ingredientId)) {
         return updateHarvestItem(state, ingredientId, status, glut)
       }
-      return { ...state, harvest: [...state.harvest, { ingredientId, status, glut, addedOn: today }] }
+      return { ...state, harvest: [...state.harvest, { ingredientId, status, glut: glut ?? false, addedOn: today }] }
     }
     case 'harvest/update':
       return updateHarvestItem(state, action.ingredientId, action.status, action.glut)
@@ -153,11 +155,16 @@ function apply(state: AppState, action: Action): AppState {
     }
     case 'shop/moveTickedToLarder': {
       const ticks = state.shoppingTicks[action.weekStart] ?? []
-      if (ticks.length === 0) return state
+      const moving = ticks.filter((id) => action.ingredientIds.includes(id))
+      if (moving.length === 0) return state
       return {
         ...state,
-        larder: addUnique(state.larder, ticks),
-        shoppingTicks: setList(state.shoppingTicks, action.weekStart, []),
+        larder: addUnique(state.larder, moving),
+        shoppingTicks: setList(
+          state.shoppingTicks,
+          action.weekStart,
+          ticks.filter((id) => !moving.includes(id)),
+        ),
       }
     }
     case 'myRecipes/save': {

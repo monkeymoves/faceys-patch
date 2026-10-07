@@ -76,7 +76,7 @@ function startAfresh() {
     if (saved !== null) browserStorage.setItem(`${STORAGE_KEY}.corrupt.${Date.now()}`, saved)
     browserStorage.setItem(STORAGE_KEY, JSON.stringify(initialState()))
   } catch {
-    window.alert("This browser isn't letting us change saved data, so nothing has been changed.")
+    window.alert("This browser won't let the app change saved data, so nothing has been changed.")
     return
   }
   window.location.reload()

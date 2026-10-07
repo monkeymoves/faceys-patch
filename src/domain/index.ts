@@ -26,11 +26,12 @@ export {
 } from './dates'
 export { makeMyId } from './ids'
 export { matchRecipes } from './matching'
-export { PLANNABLE_COURSES, planWeek, type PlanWeekInput } from './planner'
+export { hasKnownMeals, knownMeals, PLANNABLE_COURSES, planWeek, type PlanWeekInput } from './planner'
 export { LIMITS, appStateSchema, isValidState, myIngredientSchema, myRecipeSchema } from './schema'
 export { buildShoppingList, shoppingListText, type ShoppingListInput } from './shopping'
 export { initialState, reducer, type Action } from './state'
 export {
+  BACKUP_ERRORS,
   MAX_BACKUP_BYTES,
   STORAGE_KEY,
   loadState,

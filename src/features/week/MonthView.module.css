@@ -58,13 +58,13 @@
   width: calc(100% + 0.4rem);
   height: calc(100% + 0.4rem);
   overflow: visible;
-  stroke: var(--marigold);
+  stroke: var(--marigold-deep);
   stroke-width: 2.6;
   stroke-linecap: round;
 }
 
 .today {
-  border-color: var(--marigold);
+  border-color: var(--marigold-deep);
 }
 
 .past {

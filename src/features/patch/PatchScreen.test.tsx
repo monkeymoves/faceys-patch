@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { HarvestItem, Ingredient } from '../../domain'
+import { announced, shown } from '../../test/live'
 import { renderWithApp } from '../../test/render'
 import { PatchScreen } from './PatchScreen'
 
@@ -21,7 +22,9 @@ const oca: Ingredient = {
 }
 
 async function openPicker(user: ReturnType<typeof renderWithApp>['user']) {
-  await user.click(screen.getByRole('button', { name: 'Add' }))
+  // The header's Add, or on an empty patch the empty state's own button.
+  const add = screen.queryByRole('button', { name: 'Add' }) ?? screen.getByRole('button', { name: "Add what's ready" })
+  await user.click(add)
   return screen.getByRole('dialog', { name: 'Add to the patch' })
 }
 
@@ -52,9 +55,17 @@ describe('PatchScreen', () => {
       expect(saved()?.harvest).toEqual([
         { ingredientId: 'aubergine', status: 'ready', glut: false, addedOn: '2026-10-07' },
       ])
+      expect(announced()).toContain('Added aubergines to the patch.')
       const readyNow = screen.getByRole('region', { name: 'Ready now' })
       expect(within(readyNow).getByRole('button', { name: 'Aubergines, ready now' })).toHaveFocus()
       expect(screen.queryByRole('heading', { name: 'Nothing picked yet' })).not.toBeInTheDocument()
+    })
+
+    it('offers one way to add, not two', () => {
+      renderWithApp(<PatchScreen />)
+      expect(screen.getByRole('button', { name: "Add what's ready" })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument()
+      expect(screen.getByText("Add what's ready on the plot and recipes that use it will turn up.")).toBeInTheDocument()
     })
 
     it('opens the picker from "Add what\'s ready"', async () => {
@@ -117,16 +128,42 @@ describe('PatchScreen', () => {
       ).toBeInTheDocument()
     })
 
-    it('takes a crop off the patch', async () => {
+    it('takes a crop off the patch in one tap, and says so with a way to undo it', async () => {
       const { user, saved } = renderWithApp(<PatchScreen />, { state: { harvest: [crop('courgette')] } })
       await user.click(screen.getByRole('button', { name: 'Courgettes, ready now' }))
-      await user.click(screen.getByRole('button', { name: 'Take off the patch' }))
+      await user.click(screen.getByRole('button', { name: 'Take it off the patch' }))
 
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       expect(saved()?.harvest).toEqual([])
       expect(screen.getByRole('heading', { name: 'Nothing picked yet' })).toBeInTheDocument()
-      // The tile has gone, so focus lands somewhere sensible.
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toHaveFocus())
+      expect(shown('Took courgettes off the patch.')).toBeInTheDocument()
+      expect(announced()).toContain('Took courgettes off the patch.')
+      // The tile has gone, so focus lands on the likeliest next move.
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus())
+    })
+
+    it('puts a crop back exactly as it was on Undo', async () => {
+      const glutted: HarvestItem = { ingredientId: 'courgette', status: 'soon', glut: true, addedOn: '2026-09-12' }
+      const { user, saved } = renderWithApp(<PatchScreen />, { state: { harvest: [crop('kale'), glutted] } })
+      await user.click(screen.getByRole('button', { name: 'Courgettes, coming soon, loads of it' }))
+      await user.click(screen.getByRole('button', { name: 'Take it off the patch' }))
+      expect(saved()?.harvest).toEqual([crop('kale')])
+
+      await user.click(screen.getByRole('button', { name: 'Undo' }))
+      expect(saved()?.harvest).toEqual([crop('kale'), glutted])
+      expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument()
+      expect(announced()).toContain('Put courgettes back on the patch.')
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Courgettes, coming soon, loads of it' })).toHaveFocus(),
+      )
+    })
+
+    it('explains "Loads of it" as a glut', async () => {
+      const { user } = renderWithApp(<PatchScreen />, { state: { harvest: [crop('courgette')] } })
+      await user.click(screen.getByRole('button', { name: 'Courgettes, ready now' }))
+      expect(screen.getByRole('checkbox', { name: 'Loads of it' })).toHaveAccessibleDescription(
+        'A glut. Recipes that use it up come first.',
+      )
     })
 
     it('goes to Cook with recipes using that crop', async () => {
@@ -146,6 +183,7 @@ describe('PatchScreen', () => {
 
       expect(within(picker).getByRole('button', { name: 'Tomatoes' })).toHaveAttribute('aria-pressed', 'true')
       await user.click(within(picker).getByRole('button', { name: 'Kale', pressed: false }))
+      expect(announced(picker)).toEqual(['Added kale to the patch.'])
       await user.click(within(picker).getByRole('button', { name: 'Leeks', pressed: false }))
       await user.click(within(picker).getByRole('radio', { name: 'Coming soon' }))
       await user.click(within(picker).getByRole('button', { name: 'Squash', pressed: false }))
@@ -173,6 +211,7 @@ describe('PatchScreen', () => {
 
       expect(within(picker).getByRole('button', { name: 'Tomatoes' })).toHaveAttribute('aria-pressed', 'false')
       expect(saved()?.harvest.map((item) => item.ingredientId)).toEqual(['kale'])
+      expect(announced(picker)).toEqual(['Took tomatoes off the patch.'])
     })
 
     it("lists this month's crops first, then everything else A to Z, including the person's own", async () => {
@@ -207,9 +246,14 @@ describe('PatchScreen', () => {
       ])
       const others = within(picker).getByRole('region', { name: 'Everything else' })
       expect(within(others).getAllByRole('button').map((chip) => chip.textContent)).toEqual(['Broad beans'])
+      // Read out once the typing settles.
+      await waitFor(() => expect(announced(picker)).toEqual(['3 crops found.']))
 
       await user.type(within(picker).getByRole('searchbox', { name: 'Find a crop' }), 'zzz')
       expect(within(picker).getByText('Nothing on the list matches that. You can add it yourself below.')).toBeInTheDocument()
+      await waitFor(() =>
+        expect(announced(picker)).toEqual(['Nothing on the list matches that. You can add it yourself below.']),
+      )
     })
 
     it("adds the person's own crop when it isn't on the list", async () => {
@@ -217,7 +261,7 @@ describe('PatchScreen', () => {
       const picker = await openPicker(user)
       await user.click(within(picker).getByRole('radio', { name: 'Coming soon' }))
       await user.type(within(picker).getByRole('textbox', { name: 'Name' }), '  Oca ')
-      await user.click(within(picker).getByRole('button', { name: 'Add to patch' }))
+      await user.click(within(picker).getByRole('button', { name: 'Add to the patch' }))
 
       const [mine] = saved()?.myIngredients ?? []
       expect(mine).toEqual({
@@ -229,7 +273,8 @@ describe('PatchScreen', () => {
         harvestMonths: [],
       })
       expect(saved()?.harvest).toEqual([{ ingredientId: mine?.id, status: 'soon', glut: false, addedOn: '2026-10-07' }])
-      expect(within(picker).getByRole('status')).toHaveTextContent('Oca is on the patch.')
+      expect(shown('Added oca to the patch.', picker)).toBeInTheDocument()
+      expect(announced(picker)).toEqual(['Added oca to the patch.'])
       expect(within(picker).getByRole('button', { name: 'Oca' })).toHaveAttribute('aria-pressed', 'true')
       expect(within(picker).getByRole('textbox', { name: 'Name' })).toHaveValue('')
     })
@@ -237,14 +282,58 @@ describe('PatchScreen', () => {
     it('asks for a name, and uses the existing crop rather than making a twin', async () => {
       const { user, saved } = renderWithApp(<PatchScreen />)
       const picker = await openPicker(user)
-      await user.click(within(picker).getByRole('button', { name: 'Add to patch' }))
-      expect(within(picker).getByRole('textbox', { name: 'Name' })).toHaveAccessibleDescription('Give it a name first.')
+      await user.click(within(picker).getByRole('button', { name: 'Add to the patch' }))
+      const name = within(picker).getByRole('textbox', { name: 'Name' })
+      expect(name).toHaveAccessibleDescription('Give it a name.')
+      expect(name).toHaveFocus()
 
-      await user.type(within(picker).getByRole('textbox', { name: 'Name' }), 'kale')
-      await user.click(within(picker).getByRole('button', { name: 'Add to patch' }))
+      await user.type(name, 'kale')
+      await user.click(within(picker).getByRole('button', { name: 'Add to the patch' }))
       expect(saved()?.myIngredients).toEqual([])
       expect(saved()?.harvest.map((item) => item.ingredientId)).toEqual(['kale'])
-      expect(within(picker).getByRole('status')).toHaveTextContent('Kale is on the patch.')
+      expect(shown('Added kale to the patch.', picker)).toBeInTheDocument()
+    })
+
+    it('puts something on the list that is not usually grown on the patch as it is, without a twin', async () => {
+      const { user, saved } = renderWithApp(<PatchScreen />)
+      const picker = await openPicker(user)
+      await user.type(within(picker).getByRole('textbox', { name: 'Name' }), ' MUSHROOMS ')
+      await user.click(within(picker).getByRole('button', { name: 'Add to the patch' }))
+
+      expect(saved()?.myIngredients).toEqual([])
+      expect(saved()?.harvest).toEqual([{ ingredientId: 'mushrooms', status: 'ready', glut: false, addedOn: '2026-10-07' }])
+      expect(shown('Added mushrooms to the patch.', picker)).toBeInTheDocument()
+      await user.click(within(picker).getByRole('button', { name: 'Done' }))
+      // No drawing of its own, so the seedling stands in.
+      expect(screen.getByRole('button', { name: 'Mushrooms, ready now' })).toBeInTheDocument()
+    })
+
+    it("matches the person's own crops too, whatever the case or accents", async () => {
+      const { user, saved } = renderWithApp(<PatchScreen />, { state: { myIngredients: [oca] } })
+      const picker = await openPicker(user)
+      await user.type(within(picker).getByRole('textbox', { name: 'Name' }), 'ÓCA')
+      await user.click(within(picker).getByRole('button', { name: 'Add to the patch' }))
+      expect(saved()?.myIngredients).toEqual([oca])
+      expect(saved()?.harvest.map((item) => item.ingredientId)).toEqual([oca.id])
+    })
+
+    it('keeps the glut of a crop already on the patch when it is added again by name', async () => {
+      const { user, saved } = renderWithApp(<PatchScreen />, { state: { harvest: [crop('kale', 'soon', true)] } })
+      const picker = await openPicker(user)
+      await user.type(within(picker).getByRole('textbox', { name: 'Name' }), 'Kale')
+      await user.click(within(picker).getByRole('button', { name: 'Add to the patch' }))
+      expect(saved()?.harvest).toEqual([crop('kale', 'ready', true)])
+    })
+
+    it('says salt and water need no adding', async () => {
+      const { user, saved } = renderWithApp(<PatchScreen />)
+      const picker = await openPicker(user)
+      await user.type(within(picker).getByRole('textbox', { name: 'Name' }), 'salt')
+      await user.click(within(picker).getByRole('button', { name: 'Add to the patch' }))
+      expect(within(picker).getByRole('textbox', { name: 'Name' })).toHaveAccessibleDescription(
+        'No need, salt is always counted as in the larder.',
+      )
+      expect(saved()?.harvest).toEqual([])
     })
   })
 })

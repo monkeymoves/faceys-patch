@@ -11,7 +11,7 @@
 
 .list {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   max-width: var(--content-max);
   margin-inline: auto;
   padding-inline: var(--space-1);
@@ -82,9 +82,13 @@
 }
 
 .label {
-  font-size: var(--text-xs);
+  /* Grows with big text only as far as five labels still fit across the phone. */
+  max-width: 100%;
+  font-size: min(var(--text-xs), 4.2vw);
   font-weight: var(--weight-bold);
   line-height: var(--leading-snug);
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 .current {
@@ -138,6 +142,7 @@
 
   .label {
     font-size: var(--text-base);
+    overflow-wrap: normal;
   }
 
   .tab:focus-visible {

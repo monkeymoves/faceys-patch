@@ -16,6 +16,12 @@ export interface NoticeProps {
   action?: ReactNode
   onDismiss?: () => void
   dismissLabel?: string
+  /**
+   * False when the screen reads the message out itself through an Announcer.
+   * A live region that appears together with its text is often not read at
+   * all, and with both it would be read twice.
+   */
+  live?: boolean
   className?: string
 }
 
@@ -27,10 +33,12 @@ export function Notice({
   action,
   onDismiss,
   dismissLabel = 'Dismiss',
+  live = true,
   className,
 }: NoticeProps) {
+  const role = !live ? undefined : tone === 'problem' ? 'alert' : 'status'
   return (
-    <div role={tone === 'problem' ? 'alert' : 'status'} className={cx(styles.notice, styles[tone], className)}>
+    <div role={role} className={cx(styles.notice, styles[tone], className)}>
       <Icon name={ICONS[tone]} size={24} className={styles.icon} />
       <div className={styles.body}>
         {title && <p className={styles.title}>{title}</p>}

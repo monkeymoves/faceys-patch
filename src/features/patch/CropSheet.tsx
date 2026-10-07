@@ -1,20 +1,21 @@
 import { useNavigation } from '../../app/useNavigation'
 import { useStore } from '../../app/useStore'
 import { Art } from '../../art/Art'
-import type { IngredientId } from '../../domain'
+import type { HarvestItem, IngredientId } from '../../domain'
 import { Button } from '../../ui/Button'
 import { Checkbox } from '../../ui/Checkbox'
 import { SegmentedControl } from '../../ui/SegmentedControl'
 import { Sheet } from '../../ui/Sheet'
-import { midSentence, patchCrops, STATUS_OPTIONS, type Crop } from './crops'
+import { midSentence } from '../shared/text'
+import { patchCrops, STATUS_OPTIONS, type Crop } from './crops'
 import styles from './Patch.module.css'
 
 export interface CropSheetProps {
   /** The crop to show, or null when closed. */
   cropId: IngredientId | null
   onClose: () => void
-  /** Called after the crop is taken off the patch, once the sheet has closed. */
-  onRemoved: () => void
+  /** Called after the crop is taken off the patch, with how it was, so it can be put back. */
+  onRemoved: (removed: HarvestItem) => void
 }
 
 /** Tap a tile to get this: change how ready it is, mark a glut, find recipes, or take it off. */
@@ -28,8 +29,14 @@ export function CropSheet({ cropId, onClose, onRemoved }: CropSheetProps) {
   )
 }
 
-function CropDetails({ crop, onClose, onRemoved }: { crop: Crop; onClose: () => void; onRemoved: () => void }) {
-  const { dispatch } = useStore()
+interface CropDetailsProps {
+  crop: Crop
+  onClose: () => void
+  onRemoved: (removed: HarvestItem) => void
+}
+
+function CropDetails({ crop, onClose, onRemoved }: CropDetailsProps) {
+  const { state, dispatch } = useStore()
   const { go } = useNavigation()
   const { id, name, art, status, glut } = crop
 
@@ -47,7 +54,7 @@ function CropDetails({ crop, onClose, onRemoved }: { crop: Crop; onClose: () => 
       />
       <Checkbox
         label="Loads of it"
-        hint="Recipes that use it up come first."
+        hint="A glut. Recipes that use it up come first."
         checked={glut}
         onCheckedChange={(next) => dispatch({ type: 'harvest/update', ingredientId: id, glut: next })}
       />
@@ -68,11 +75,12 @@ function CropDetails({ crop, onClose, onRemoved }: { crop: Crop; onClose: () => 
           icon="bin"
           fullWidth
           onClick={() => {
+            const removed = state.harvest.find((item) => item.ingredientId === id)
             dispatch({ type: 'harvest/remove', ingredientId: id })
-            onRemoved()
+            if (removed) onRemoved(removed)
           }}
         >
-          Take off the patch
+          Take it off the patch
         </Button>
       </div>
     </div>

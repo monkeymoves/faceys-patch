@@ -16,6 +16,11 @@
   margin-right: auto;
 }
 
+/* Phones: the wordmark grows with the text size only while it still fits the width. */
+.inner .wordmark {
+  font-size: min(1.625rem, 8vw);
+}
+
 .actions {
   display: flex;
   align-items: center;
@@ -36,6 +41,10 @@
 
   .wordmark {
     margin-right: 0;
+  }
+
+  .inner .wordmark {
+    font-size: 1.625rem;
   }
 
   .nav {

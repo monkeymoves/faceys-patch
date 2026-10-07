@@ -63,7 +63,7 @@ export interface EmptyCopy {
 
 const EMPTY_COPY: Record<CookFilter, EmptyCopy> = {
   all: { title: 'Nothing to show', text: 'Try another filter.' },
-  ready: { title: 'Nothing ready without a shop', text: 'Every recipe here needs a thing or two. Try All.' },
+  ready: { title: 'Nothing is ready to cook as it is', text: 'Every recipe here needs a thing or two. Try All.' },
   veggie: { title: 'No veggie recipes for this lot', text: "Nothing veggie uses what's on the patch. Try All." },
   mine: { title: 'No recipes of your own yet', text: 'Write down the ones you make again and again.' },
 }

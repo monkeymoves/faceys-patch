@@ -1,16 +1,32 @@
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from 'react'
+import { cx } from './cx'
 import { IconButton } from './IconButton'
 import styles from './Sheet.module.css'
 
 export interface SheetProps {
   open: boolean
-  /** Called for the close button, Escape and a tap on the backdrop. Set open to false in response. */
+  /** Called for the close button, Escape, the system back gesture and a tap on the backdrop. Set open to false in response. */
   onClose: () => void
+  /**
+   * Asked first whenever the person tries to close the sheet that way. Return
+   * false to keep it open (for example to ask "Throw this away?" first), and
+   * onClose is not called. Leave it out and the sheet always closes.
+   */
+  shouldClose?: () => boolean
   title: string
   children: ReactNode
   /** Actions pinned to the bottom, e.g. Save and Cancel. */
   footer?: ReactNode
   closeLabel?: string
+  /**
+   * A fixed tall height instead of fitting the content, so a search box at the
+   * top stays put while the results under it change.
+   */
+  tall?: boolean
+  /** 'alertdialog' for a confirm, so the consequence is read out with the title. */
+  role?: 'dialog' | 'alertdialog'
+  /** Id of the text that says what the dialog is about, e.g. a confirm's message. */
+  describedBy?: string
 }
 
 function restoreFocus(saved: RefObject<HTMLElement | null>) {
@@ -26,11 +42,28 @@ function restoreFocus(saved: RefObject<HTMLElement | null>) {
  * open, give that element a data-autofocus attribute.
  * Children only render while open, so a form inside starts fresh each time.
  */
-export function Sheet({ open, onClose, title, children, footer, closeLabel = 'Close' }: SheetProps) {
+export function Sheet({
+  open,
+  onClose,
+  shouldClose,
+  title,
+  children,
+  footer,
+  closeLabel = 'Close',
+  tall = false,
+  role,
+  describedBy,
+}: SheetProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const returnFocusTo = useRef<HTMLElement | null>(null)
   const pressedBackdrop = useRef(false)
   const titleId = useId()
+
+  /** The person asked to close it: check with the owner first. */
+  const requestClose = () => {
+    if (shouldClose?.() === false) return
+    onClose()
+  }
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -55,22 +88,29 @@ export function Sheet({ open, onClose, title, children, footer, closeLabel = 'Cl
   return (
     <dialog
       ref={dialogRef}
-      className={styles.sheet}
+      className={cx(styles.sheet, tall && styles.tall)}
+      role={role === 'alertdialog' ? 'alertdialog' : undefined}
       aria-labelledby={titleId}
+      aria-describedby={describedBy}
       onCancel={(event) => {
         event.preventDefault()
-        onClose()
+        requestClose()
       }}
-      onClose={() => {
+      onClose={(event) => {
+        // Closed by the browser itself (a second Escape or back gesture can't be
+        // stopped), but the owner wants it kept open: open it again.
+        if (open && shouldClose?.() === false) {
+          event.currentTarget.showModal()
+          return
+        }
         restoreFocus(returnFocusTo)
-        // Closed by the browser itself (e.g. a second Escape): tell the owner.
         if (open) onClose()
       }}
       onPointerDown={(event) => {
         pressedBackdrop.current = event.target === event.currentTarget
       }}
       onClick={(event) => {
-        if (pressedBackdrop.current && event.target === event.currentTarget) onClose()
+        if (pressedBackdrop.current && event.target === event.currentTarget) requestClose()
         pressedBackdrop.current = false
       }}
     >
@@ -79,7 +119,7 @@ export function Sheet({ open, onClose, title, children, footer, closeLabel = 'Cl
           <h2 id={titleId} className={styles.title}>
             {title}
           </h2>
-          <IconButton icon="close" label={closeLabel} onClick={onClose} className={styles.close} />
+          <IconButton icon="close" label={closeLabel} onClick={requestClose} className={styles.close} />
         </header>
         <div className={styles.body}>{open && children}</div>
         {open && footer && <div className={styles.footer}>{footer}</div>}

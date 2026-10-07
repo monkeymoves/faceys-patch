@@ -6,10 +6,7 @@
 import {
   deriveDiet,
   LIMITS,
-  makeMyId,
-  myIngredientSchema,
   myRecipeSchema,
-  type Aisle,
   type Catalogue,
   type Course,
   type Ingredient,
@@ -17,13 +14,17 @@ import {
   type Recipe,
   type RecipeIngredient,
 } from '../../domain'
-import { normalise } from './recipeParts'
+import { fold } from '../shared/text'
+import { amountText } from './recipeParts'
 
 export interface DraftRow {
   id: IngredientId
   amount: string
   optional: boolean
-  /** Kept from a copied or edited recipe. The form has no field for it. */
+  /**
+   * Kept from a copied or edited recipe only when it wouldn't fit in the
+   * amount. The form has no field for it.
+   */
   prep?: string
 }
 
@@ -39,7 +40,10 @@ export interface RecipeDraft {
 }
 
 export type DraftField = 'title' | 'note' | 'minutes' | 'serves' | 'course' | 'ingredients' | 'method'
-export type DraftErrors = Partial<Record<DraftField, string>>
+export type DraftErrors = Partial<Record<DraftField, string>> & {
+  /** Problems with one ingredient, shown on its row. */
+  rows?: Partial<Record<IngredientId, string>>
+}
 
 export const COURSE_OPTIONS: readonly { value: Course; label: string }[] = [
   { value: 'main', label: 'Main' },
@@ -59,6 +63,18 @@ export function emptyDraft(): RecipeDraft {
 
 const COPY_SUFFIX = ' (my version)'
 
+/** One ingredient as a form row: the prep goes into the amount ('2, sliced') when the two fit together. */
+function rowFrom(ingredient: RecipeIngredient): DraftRow {
+  const together = amountText(ingredient.amount, ingredient.prep)
+  const fits = together.length <= LIMITS.amountLength
+  return {
+    id: ingredient.id,
+    amount: fits ? together : ingredient.amount,
+    optional: ingredient.optional === true,
+    ...(!fits && ingredient.prep ? { prep: ingredient.prep } : {}),
+  }
+}
+
 /** A draft filled from an existing recipe. A copy gets "(my version)" on its title when it fits. */
 export function draftFromRecipe(recipe: Recipe, copy: boolean): RecipeDraft {
   const title =
@@ -67,14 +83,7 @@ export function draftFromRecipe(recipe: Recipe, copy: boolean): RecipeDraft {
   const rows = recipe.ingredients.flatMap((ingredient): DraftRow[] => {
     if (seen.has(ingredient.id)) return []
     seen.add(ingredient.id)
-    return [
-      {
-        id: ingredient.id,
-        amount: ingredient.amount,
-        optional: ingredient.optional === true,
-        ...(ingredient.prep ? { prep: ingredient.prep } : {}),
-      },
-    ]
+    return [rowFrom(ingredient)]
   })
   return {
     title,
@@ -114,21 +123,25 @@ export function checkDraft(draft: RecipeDraft, id: string, catalogue: Catalogue)
   const blurb = draft.note.trim()
   const steps = methodSteps(draft.method)
 
-  if (title === '') errors.title = 'Give it a name'
+  if (title === '') errors.title = 'Give it a name.'
   else if (title.length > LIMITS.titleLength)
-    errors.title = `Keep the name to ${LIMITS.titleLength} characters or fewer`
+    errors.title = `Keep the name to ${LIMITS.titleLength} characters or fewer.`
 
-  if (blurb.length > LIMITS.blurbLength) errors.note = `Keep the note to ${LIMITS.blurbLength} characters or fewer`
+  if (blurb.length > LIMITS.blurbLength) errors.note = `Keep the note to ${LIMITS.blurbLength} characters or fewer.`
 
-  if (draft.rows.length === 0) errors.ingredients = 'Add at least one ingredient'
+  if (draft.rows.length === 0) errors.ingredients = 'Add at least one ingredient.'
   else if (draft.rows.length > LIMITS.recipeIngredients) {
-    errors.ingredients = `A recipe can have up to ${LIMITS.recipeIngredients} ingredients`
-  } else if (draft.rows.some((row) => row.amount.trim().length > LIMITS.amountLength)) {
-    errors.ingredients = `Keep each amount to ${LIMITS.amountLength} characters or fewer`
+    errors.ingredients = `A recipe can have up to ${LIMITS.recipeIngredients} ingredients.`
+  }
+  const tooLong = draft.rows.filter((row) => row.amount.trim().length > LIMITS.amountLength)
+  if (tooLong.length > 0) {
+    errors.rows = Object.fromEntries(
+      tooLong.map((row) => [row.id, `Keep the amount to ${LIMITS.amountLength} characters or fewer.`]),
+    )
   }
 
-  if (steps.length === 0) errors.method = 'Add at least one step'
-  else if (steps.length > LIMITS.steps) errors.method = `Keep it to ${LIMITS.steps} steps or fewer`
+  if (steps.length === 0) errors.method = 'Add at least one step.'
+  else if (steps.length > LIMITS.steps) errors.method = `Keep it to ${LIMITS.steps} steps or fewer.`
   else if (steps.some((step) => step.length > LIMITS.stepLength)) {
     errors.method = `Each step can be up to ${LIMITS.stepLength} characters. Try splitting a long one in two.`
   }
@@ -159,9 +172,16 @@ export function checkDraft(draft: RecipeDraft, id: string, catalogue: Catalogue)
   // A last check against the saved-state schema, so nothing is silently refused.
   const parsed = myRecipeSchema.safeParse(recipe)
   if (!parsed.success) {
+    const vague = "Something here isn't quite right. Try shortening it."
     for (const issue of parsed.error.issues) {
-      const field = SCHEMA_FIELDS[String(issue.path[0])] ?? 'title'
-      errors[field] ??= "Something here isn't quite right. Try shortening it."
+      const [top, index] = issue.path
+      const row = top === 'ingredients' && typeof index === 'number' ? draft.rows[index] : undefined
+      if (row) {
+        errors.rows = { ...errors.rows, [row.id]: errors.rows?.[row.id] ?? vague }
+        continue
+      }
+      const field = SCHEMA_FIELDS[String(top)] ?? 'title'
+      errors[field] ??= vague
     }
     return { ok: false, errors }
   }
@@ -175,11 +195,11 @@ export function searchIngredients(
   exclude: ReadonlySet<IngredientId>,
   limit = 8,
 ): Ingredient[] {
-  const wanted = normalise(query)
+  const wanted = fold(query)
   if (wanted === '') return []
   const ranked = [...catalogue.ingredients.values()].flatMap((ingredient) => {
     if (exclude.has(ingredient.id)) return []
-    const name = normalise(ingredient.name)
+    const name = fold(ingredient.name)
     if (!name.includes(wanted)) return []
     const rank = name.startsWith(wanted) ? 0 : name.split(' ').some((word) => word.startsWith(wanted)) ? 1 : 2
     return [{ ingredient, rank, name }]
@@ -188,41 +208,4 @@ export function searchIngredients(
     .sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name, 'en-GB'))
     .slice(0, limit)
     .map((entry) => entry.ingredient)
-}
-
-/** An ingredient already in the catalogue with exactly this name (ignoring case and accents). */
-export function findByName(catalogue: Catalogue, name: string): Ingredient | undefined {
-  const wanted = normalise(name)
-  if (wanted === '') return undefined
-  return [...catalogue.ingredients.values()].find((ingredient) => normalise(ingredient.name) === wanted)
-}
-
-export interface NewIngredientInput {
-  name: string
-  aisle: Aisle
-  grows: boolean
-}
-
-export type NewIngredientResult = { ok: true; ingredient: Ingredient } | { ok: false; error: string }
-
-/** A new ingredient of the person's own. Growable ones get the seedling drawing and no harvest months yet. */
-export function makeIngredient({ name, aisle, grows }: NewIngredientInput, mineSoFar: number): NewIngredientResult {
-  const trimmed = name.trim()
-  if (trimmed === '') return { ok: false, error: 'Give it a name' }
-  if (trimmed.length > LIMITS.nameLength) {
-    return { ok: false, error: `Keep the name to ${LIMITS.nameLength} characters or fewer` }
-  }
-  if (mineSoFar >= LIMITS.myIngredients) {
-    return { ok: false, error: "You've added as many of your own ingredients as the app can keep" }
-  }
-  const ingredient: Ingredient = {
-    id: makeMyId(trimmed),
-    name: trimmed,
-    aisle,
-    growable: grows,
-    ...(grows ? { art: 'seedling' as const, harvestMonths: [] } : {}),
-  }
-  return myIngredientSchema.safeParse(ingredient).success
-    ? { ok: true, ingredient }
-    : { ok: false, error: "That name won't work. Try a shorter one." }
 }

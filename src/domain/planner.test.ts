@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildCatalogue } from './catalogue'
-import { PLANNABLE_COURSES, planWeek } from './planner'
+import { hasKnownMeals, knownMeals, PLANNABLE_COURSES, planWeek } from './planner'
 import { CATALOGUE, INGREDIENTS, deepFreeze, makeRecipe, ready, soon } from './test-fixtures'
 import type { Catalogue, HarvestItem, IngredientId, ISODate, MealPlan } from './types'
 
@@ -68,6 +68,11 @@ describe('planWeek: dates', () => {
 
   it('treats a date with an empty list of meals as empty', () => {
     expect(plan({ ...courgetteWeek, plan: { [MON]: [] }, dates: [MON] })).toEqual({ [MON]: 'courgette-fritters' })
+  })
+
+  it('treats a date whose only meal is a recipe that has since gone as empty', () => {
+    const result = plan({ ...courgetteWeek, plan: { [MON]: [meal('recipe-that-was-deleted')] }, dates: [MON] })
+    expect(result).toEqual({ [MON]: 'courgette-fritters' })
   })
 
   it('ignores anything in dates that is not a calendar date', () => {
@@ -264,5 +269,25 @@ describe('planWeek: only dinners', () => {
     ])
     const result = plan({ catalogue, harvest: [ready('courgette', true)], dates: [MON, TUE, WED] })
     expect(result).toEqual({ [MON]: 'soup', [TUE]: 'gratin' })
+  })
+})
+
+describe('knownMeals and hasKnownMeals', () => {
+  const gone = meal('recipe-that-was-deleted', 'm-gone')
+  const salad = meal('tomato-salad', 'm-salad')
+
+  it('lists the meals on a date whose recipe is still known, in plan order', () => {
+    const planned: MealPlan = { [MON]: [gone, salad], [TUE]: [gone] }
+    expect(knownMeals(planned, MON, CATALOGUE)).toEqual([salad])
+    expect(knownMeals(planned, TUE, CATALOGUE)).toEqual([])
+    expect(knownMeals(planned, WED, CATALOGUE)).toEqual([])
+  })
+
+  it('says a day holding only a recipe that has gone has nothing planned', () => {
+    const planned: MealPlan = { [MON]: [gone, salad], [TUE]: [gone], [WED]: [] }
+    expect(hasKnownMeals(planned, MON, CATALOGUE)).toBe(true)
+    expect(hasKnownMeals(planned, TUE, CATALOGUE)).toBe(false)
+    expect(hasKnownMeals(planned, WED, CATALOGUE)).toBe(false)
+    expect(hasKnownMeals(planned, '2026-10-08', CATALOGUE)).toBe(false)
   })
 })

@@ -1,7 +1,6 @@
 /*
  * Dev-only page (open /?gallery) showing every UI component in every state.
- * /?gallery&screen=patch, cook or week shows a composed mock screen on its own.
- * Add &form to the week screen to open the "Write a recipe" sheet on load.
+ * The real screens are the place to see them composed.
  */
 import { useState, type ReactNode } from 'react'
 import { Art } from '../art/Art'
@@ -14,8 +13,6 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { DayCard } from './DayCard'
 import { EmptyState } from './EmptyState'
 import { FieldGroup } from './FieldGroup'
-import { RecipeFormSheet } from './GalleryRecipeForm'
-import { GalleryScreen, type MockScreen } from './GalleryScreens'
 import { HandNote } from './HandNote'
 import { ICON_NAMES } from './glyphs'
 import { Icon } from './icons'
@@ -23,6 +20,7 @@ import { IconButton } from './IconButton'
 import { IngredientRow } from './IngredientRow'
 import { Notice } from './Notice'
 import { NumberStepper } from './NumberStepper'
+import { PeriodNav } from './PeriodNav'
 import { ProduceTile } from './ProduceTile'
 import { RecipeCard } from './RecipeCard'
 import { ScreenTitle } from './ScreenTitle'
@@ -36,8 +34,6 @@ import { TextField } from './TextField'
 import { ToggleChip } from './ToggleChip'
 import { Wordmark } from './Wordmark'
 import styles from './Gallery.module.css'
-
-const SCREENS: readonly MockScreen[] = ['patch', 'cook', 'week']
 
 const COLOURS = [
   'paper',
@@ -59,11 +55,6 @@ const COLOURS = [
 ] as const
 
 export function Gallery() {
-  const params = new URLSearchParams(window.location.search)
-  const screen = params.get('screen')
-  if (screen && (SCREENS as readonly string[]).includes(screen)) {
-    return <GalleryScreen screen={screen as MockScreen} withForm={params.has('form')} />
-  }
   return <ComponentGallery />
 }
 
@@ -95,7 +86,7 @@ function ComponentGallery() {
   const [emptyQuery, setEmptyQuery] = useState('')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
-  const [formOpen, setFormOpen] = useState(false)
+  const [week, setWeek] = useState(0)
   const [title, setTitle] = useState('Courgette and mint fritters')
   const [longTitle, setLongTitle] = useState('Grandad’s proper runner bean chutney, the one with')
   const [badTitle, setBadTitle] = useState('')
@@ -114,11 +105,7 @@ function ComponentGallery() {
       />
       <main className={styles.main}>
         <ScreenTitle aside="shed notebook">Design system</ScreenTitle>
-        <p className={styles.lede}>
-          Every component in every state. Mock screens at the bottom, or open{' '}
-          <a href="?gallery&screen=patch">Patch</a>, <a href="?gallery&screen=cook">Cook</a> and{' '}
-          <a href="?gallery&screen=week">Week</a> on their own.
-        </p>
+        <p className={styles.lede}>Every component in every state. The app itself shows them put together.</p>
 
         <Section title="Wordmark" note="A seedling where the apostrophe goes.">
           <div className={styles.stack}>
@@ -175,7 +162,7 @@ function ComponentGallery() {
 
         <Section title="Buttons">
           <div className={styles.row}>
-            <Button>Add to week</Button>
+            <Button>Add to a day</Button>
             <Button variant="secondary">Cancel</Button>
             <Button variant="ghost">Not on the list?</Button>
             <Button variant="danger">Start afresh</Button>
@@ -208,6 +195,10 @@ function ComponentGallery() {
             <IconButton icon="plus" label="Add" variant="primary" size="lg" />
             <IconButton icon="bin" label="Remove" />
             <IconButton icon="share" label="Share" disabled />
+          </div>
+          <div className={styles.row}>
+            <Button aria-disabled="true">Unavailable, still focusable</Button>
+            <IconButton icon="plus" label="Increase, at the limit" variant="secondary" aria-disabled="true" />
           </div>
         </Section>
 
@@ -251,6 +242,16 @@ function ComponentGallery() {
               value={filter}
               onChange={setFilter}
             />
+            <div className={styles.narrow}>
+              <PeriodNav
+                label={['This week, 5 to 11 October', 'Next week, 12 to 18 October'][week % 2] ?? ''}
+                previousLabel="Previous week"
+                nextLabel="Next week"
+                onPrevious={() => setWeek(week + 1)}
+                onNext={() => setWeek(week + 1)}
+                jump={week % 2 === 1 ? { label: 'Back to this week', onClick: () => setWeek(0) } : undefined}
+              />
+            </div>
             <div className={styles.grid2}>
               <SearchField label="Find a crop" value={query} onChange={setQuery} />
               <SearchField label="Search the larder" hideLabel value={emptyQuery} onChange={setEmptyQuery} placeholder="Search the larder" />
@@ -329,6 +330,19 @@ function ComponentGallery() {
                 onOptionalChange={() => {}}
                 onRemove={() => {}}
               />
+              <IngredientRow
+                name="Lemons"
+                amount="the zest and juice of two big unwaxed ones, or three small ones if that's what you have"
+                amountMaxLength={80}
+                onAmountChange={() => {}}
+                optional={false}
+                onOptionalChange={() => {}}
+                onRemove={() => {}}
+                error="Keep the amount to 80 characters or fewer."
+              />
+            </FieldGroup>
+            <FieldGroup legend="Ingredients, with a problem" error="Add at least one ingredient." errorId="gallery-error">
+              <SearchField label="Add an ingredient" value="" onChange={() => {}} aria-describedby="gallery-error" />
             </FieldGroup>
           </div>
         </Section>
@@ -341,11 +355,8 @@ function ComponentGallery() {
             <Button variant="secondary" onClick={() => setConfirmOpen(true)}>
               Start afresh
             </Button>
-            <Button icon="pencil" onClick={() => setFormOpen(true)}>
-              Write a recipe
-            </Button>
           </div>
-          <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Courgettes">
+          <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Courgettes" tall>
             <div className={styles.sheetDemo}>
               <Art name="courgette" size={96} />
               <SegmentedControl
@@ -357,31 +368,48 @@ function ComponentGallery() {
                 value="ready"
                 onChange={() => {}}
               />
-              <Checkbox label="Loads of it" hint="We'll try hard to use it up." checked onCheckedChange={() => {}} />
+              <Checkbox
+                label="Loads of it"
+                hint="A glut. Recipes that use it up come first."
+                checked
+                onCheckedChange={() => {}}
+              />
               <Button variant="ghost" icon="bin" onClick={() => setSheetOpen(false)}>
-                Take off the patch
+                Take it off the patch
               </Button>
             </div>
           </Sheet>
           <ConfirmDialog
             open={confirmOpen}
             title="Start afresh?"
-            message="This clears your patch, larder and week on this device. It can't be undone, so export a backup first if you might want it."
+            message="This clears your patch, larder and week on this device. It can't be undone."
             confirmLabel="Clear everything"
             destructive
+            otherAction={{ label: 'Download a backup first', icon: 'download', onClick: () => {} }}
             onConfirm={() => setConfirmOpen(false)}
             onCancel={() => setConfirmOpen(false)}
           />
-          <RecipeFormSheet open={formOpen} onClose={() => setFormOpen(false)} />
         </Section>
 
         <Section title="Messages">
           <div className={styles.stack}>
-            <Notice tone="problem" title="We couldn't read your saved data">
-              So we've started afresh and kept a copy, in case you want to send it to us.
+            <Notice tone="problem" title="Your saved data couldn't be read">
+              So the app has started afresh and kept a copy, in case you want it.
             </Notice>
             <Notice tone="success" onDismiss={() => {}}>
-              Put 3 things in the larder.
+              3 things put in the larder.
+            </Notice>
+            <Notice
+              tone="success"
+              live={false}
+              action={
+                <Button size="sm" variant="secondary">
+                  Undo
+                </Button>
+              }
+              onDismiss={() => {}}
+            >
+              Took courgettes off the patch.
             </Notice>
             <Notice tone="info">Your data stays on this phone. Export a backup to move it.</Notice>
           </div>
@@ -398,7 +426,7 @@ function ComponentGallery() {
                 title="Nothing on the patch yet"
                 action={<Button icon="plus">Add what's ready</Button>}
               >
-                Tell us what's ready and we'll find you something to cook.
+                Add what's ready on the plot and recipes that use it will turn up.
               </EmptyState>
             </Card>
             <div className={styles.grid2}>
@@ -513,20 +541,6 @@ function ComponentGallery() {
               />
             </li>
           </ul>
-        </Section>
-
-        <Section title="Mock screens" note="Real phone width, in frames. Desktop: open them on their own.">
-          <div className={styles.frames}>
-            {SCREENS.map((name) => (
-              <iframe
-                key={name}
-                title={`${name} screen`}
-                src={`?gallery&screen=${name}`}
-                className={styles.frame}
-                loading="eager"
-              />
-            ))}
-          </div>
         </Section>
       </main>
     </div>

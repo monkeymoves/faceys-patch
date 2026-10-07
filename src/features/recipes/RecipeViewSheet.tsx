@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { useSupplies } from '../../app/hooks'
 import { Art } from '../../art/Art'
 import { formatLongDate, type ISODate, type Recipe } from '../../domain'
@@ -47,6 +47,17 @@ export function RecipeViewSheet({
   onSetCooked,
   onTakeOff,
 }: RecipeViewSheetProps) {
+  const editButton = useRef<HTMLButtonElement>(null)
+  const shownId = useRef<string | undefined>(undefined)
+
+  // Saving "my own version" swaps the recipe on show for the copy, and the
+  // button that opened the form goes with the old one: land on Edit instead.
+  useEffect(() => {
+    const previous = shownId.current
+    shownId.current = recipe?.id
+    if (previous && recipe && previous !== recipe.id) editButton.current?.focus()
+  }, [recipe])
+
   const footer = meal ? (
     <>
       {meal.cooked ? (
@@ -59,12 +70,12 @@ export function RecipeViewSheet({
         </Button>
       )}
       <Button variant="secondary" onClick={onTakeOff}>
-        Take off this day
+        Take it off this day
       </Button>
     </>
   ) : (
     <Button icon="calendar" onClick={onAddToWeek}>
-      Add to week
+      Add to a day
     </Button>
   )
 
@@ -74,12 +85,12 @@ export function RecipeViewSheet({
         <RecipeDetails recipe={recipe} meal={meal} notice={notice}>
           {meal && (
             <Button variant="ghost" size="sm" icon="calendar" onClick={onAddToWeek}>
-              Add to another day
+              Add to a day
             </Button>
           )}
           {mine ? (
             <>
-              <Button variant="ghost" size="sm" icon="pencil" onClick={onEdit}>
+              <Button ref={editButton} variant="ghost" size="sm" icon="pencil" onClick={onEdit}>
                 Edit
               </Button>
               <Button variant="ghost" size="sm" icon="bin" onClick={onDelete} className={styles.delete}>
@@ -149,10 +160,12 @@ function RecipeDetails({ recipe, meal, notice, children }: RecipeDetailsProps) {
           <h3 id={methodId} className={styles.groupHeading}>
             Method
           </h3>
-          <ol className={styles.steps}>
+          {/* role="list" keeps it a list for VoiceOver without bullets; the numbers are read out. */}
+          <ol role="list" className={styles.steps}>
             {recipe.steps.map((step, index) => (
               <li key={index} className={styles.step}>
-                <span className={styles.stepNumber} aria-hidden="true">
+                <span className={styles.stepNumber}>
+                  <span className="visually-hidden">Step </span>
                   {index + 1}
                 </span>
                 <span>{step}</span>

@@ -1,0 +1,27 @@
+.nav {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.jump {
+  max-width: 100%;
+}

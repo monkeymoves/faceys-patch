@@ -109,14 +109,22 @@ describe('NumberStepper', () => {
     expect(spin).toHaveValue('25')
   })
 
-  it('stops at the limits and disables the button that would pass them', async () => {
+  it('stops at the limits, marking the button that would pass them unavailable without losing focus', async () => {
     const user = userEvent.setup()
-    render(<Harness />)
+    const onChange = vi.fn()
+    render(<Harness onChange={onChange} />)
     const plus = screen.getByRole('button', { name: 'Increase minutes' })
     await user.click(plus)
     await user.click(plus)
     expect(screen.getByRole('spinbutton', { name: 'Minutes' })).toHaveValue('40')
-    expect(plus).toBeDisabled()
+    expect(plus).toHaveAttribute('aria-disabled', 'true')
+    // Still focusable, so keyboard focus stays put rather than dropping to the page.
+    expect(plus).not.toBeDisabled()
+    expect(plus).toHaveFocus()
+    await user.click(plus)
+    expect(onChange).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('spinbutton', { name: 'Minutes' })).toHaveValue('40')
+    expect(screen.getByRole('button', { name: 'Decrease minutes' })).not.toHaveAttribute('aria-disabled')
   })
 
   it('takes a typed number on blur, kept within the limits', async () => {
@@ -158,6 +166,20 @@ describe('FieldGroup', () => {
     expect(group).toHaveAccessibleDescription('Salt and pepper are taken as read.')
     expect(group).toContainElement(screen.getByRole('textbox', { name: 'Amount' }))
   })
+
+  it('can give its error a known id, so a control inside can be described by it', () => {
+    render(
+      <FieldGroup legend="Ingredients" error="Add at least one ingredient." errorId="ingredients-error">
+        <input aria-label="Add an ingredient" aria-describedby="ingredients-error" />
+      </FieldGroup>,
+    )
+    expect(screen.getByRole('textbox', { name: 'Add an ingredient' })).toHaveAccessibleDescription(
+      'Add at least one ingredient.',
+    )
+    expect(screen.getByRole('group', { name: 'Ingredients' })).toHaveAccessibleDescription(
+      'Add at least one ingredient.',
+    )
+  })
 })
 
 describe('IngredientRow', () => {
@@ -185,6 +207,25 @@ describe('IngredientRow', () => {
     expect(onOptionalChange).toHaveBeenCalledWith(true)
     await user.click(screen.getByRole('button', { name: 'Remove Mint' }))
     expect(onRemove).toHaveBeenCalledOnce()
+  })
+
+  it('marks its amount invalid with a plain message, and limits its length', () => {
+    render(
+      <IngredientRow
+        name="Mint"
+        amount="a few sprigs"
+        optional={false}
+        onAmountChange={() => {}}
+        onOptionalChange={() => {}}
+        onRemove={() => {}}
+        amountMaxLength={80}
+        error="Keep the amount to 80 characters or fewer."
+      />,
+    )
+    const amount = screen.getByRole('textbox', { name: 'Amount of Mint' })
+    expect(amount).toHaveAttribute('aria-invalid', 'true')
+    expect(amount).toHaveAttribute('maxlength', '80')
+    expect(amount).toHaveAccessibleDescription('Keep the amount to 80 characters or fewer.')
   })
 })
 

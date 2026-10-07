@@ -50,6 +50,11 @@ describe('SettingsSheet', () => {
     const app = within(sheet).getByRole('region', { name: 'Use it like an app' })
     expect(app).toHaveTextContent('tap Share, then Add to Home Screen')
     expect(app).toHaveTextContent('tap the menu, then Install app')
+    // Safari can clear a website's data; a Home Screen app keeps it.
+    expect(app).toHaveTextContent('On iPhone, do add it to your Home Screen.')
+    expect(app).toHaveTextContent("Safari can clear a website's data")
+    const backup = within(sheet).getByRole('region', { name: 'Backup' })
+    expect(backup).toHaveTextContent('downloading a backup now and then is wise')
   })
 
   it('downloads a dated backup through a temporary link, then lets the link go', async () => {
@@ -75,7 +80,10 @@ describe('SettingsSheet', () => {
     })
     await waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith('blob:faceys-backup'))
     expect(document.querySelector('a[download]')).toBeNull()
-    expect(screen.getByRole('status')).toHaveTextContent('Backup saved as faceys-patch-backup-2026-10-07.json.')
+    // Some browsers block a download without saying, so it doesn't promise.
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Your backup should now be in your downloads (faceys-patch-backup-2026-10-07.json).',
+    )
   })
 
   it("says so if the backup can't be made", async () => {
@@ -94,7 +102,7 @@ describe('SettingsSheet', () => {
     const { user, saved } = renderSettings()
     await user.upload(fileInput(), jsonFile(serializeBackup(BACKED_UP, new Date(2026, 8, 30))))
 
-    const confirm = await screen.findByRole('dialog', { name: 'Replace everything with this backup?' })
+    const confirm = await screen.findByRole('alertdialog', { name: 'Replace everything with this backup?' })
     expect(confirm).toHaveTextContent(
       'It has 2 things on the patch, 1 thing in the larder, 2 planned meals and no recipes of your own.',
     )
@@ -102,7 +110,7 @@ describe('SettingsSheet', () => {
     await user.click(within(confirm).getByRole('button', { name: 'Replace everything' }))
 
     expect(saved()).toEqual(BACKED_UP)
-    expect(screen.queryByRole('dialog', { name: 'Replace everything with this backup?' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog', { name: 'Replace everything with this backup?' })).not.toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('Backup loaded.')
   })
@@ -113,7 +121,7 @@ describe('SettingsSheet', () => {
     await user.click(await screen.findByRole('button', { name: 'Cancel' }))
 
     expect(saved()).toEqual({ ...initialState(), ...HERE })
-    expect(screen.queryByRole('dialog', { name: 'Replace everything with this backup?' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog', { name: 'Replace everything with this backup?' })).not.toBeInTheDocument()
     expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument()
   })
 
@@ -125,7 +133,7 @@ describe('SettingsSheet', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       "That backup is damaged, so it can't be loaded. Nothing has been changed.",
     )
-    expect(screen.queryByRole('dialog', { name: 'Replace everything with this backup?' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog', { name: 'Replace everything with this backup?' })).not.toBeInTheDocument()
     expect(saved()).toEqual({ ...initialState(), ...HERE })
   })
 
@@ -148,7 +156,8 @@ describe('SettingsSheet', () => {
     const { user, saved } = renderSettings()
     await user.click(screen.getByRole('button', { name: 'Start afresh' }))
 
-    const confirm = screen.getByRole('dialog', { name: 'Start afresh?' })
+    const confirm = screen.getByRole('alertdialog', { name: 'Start afresh?' })
+    expect(confirm).toHaveAccessibleDescription(/clears your patch, larder, plans and your own recipes on this device/)
     expect(confirm).toHaveTextContent('clears your patch, larder, plans and your own recipes on this device')
     expect(confirm).toHaveTextContent('download a backup first')
     expect(within(confirm).getByRole('button', { name: 'Cancel' })).toHaveFocus()
@@ -160,6 +169,27 @@ describe('SettingsSheet', () => {
     await user.click(screen.getByRole('button', { name: 'Clear everything' }))
     expect(saved()).toEqual(initialState())
     expect(screen.getByRole('status')).toHaveTextContent('All cleared.')
+  })
+
+  it('offers to download a backup from the Start afresh confirm, without starting afresh', async () => {
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:faceys-backup')
+    Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, configurable: true })
+    Object.defineProperty(URL, 'revokeObjectURL', { value: vi.fn(), configurable: true })
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    const { user, saved } = renderSettings()
+    await user.click(screen.getByRole('button', { name: 'Start afresh' }))
+    const confirm = screen.getByRole('alertdialog', { name: 'Start afresh?' })
+    await user.click(within(confirm).getByRole('button', { name: 'Download a backup first' }))
+
+    expect(createObjectURL).toHaveBeenCalledOnce()
+    const note = 'Your backup should now be in your downloads (faceys-patch-backup-2026-10-07.json).'
+    expect(within(confirm).getByRole('status')).toHaveTextContent(note)
+    expect(within(confirm).getByText(note, { ignore: '[role="status"]' })).toBeInTheDocument()
+    expect(saved()).toEqual({ ...initialState(), ...HERE })
+
+    await user.click(within(confirm).getByRole('button', { name: 'Clear everything' }))
+    expect(saved()).toEqual(initialState())
   })
 
   it('forgets its messages when closed', async () => {

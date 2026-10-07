@@ -37,6 +37,17 @@ describe('harvest/add', () => {
     expect(next.harvest).toEqual([{ ...soon('kale'), status: 'ready', glut: true }])
   })
 
+  it('keeps the glut of a crop already there when no glut is given', () => {
+    const state = makeState({ harvest: [soon('kale', true)] })
+    const next = run(state, { type: 'harvest/add', ingredientId: 'kale', status: 'ready', today: '2026-10-07' })
+    expect(next.harvest).toEqual([{ ...soon('kale', true), status: 'ready' }])
+  })
+
+  it('adds a new crop without a glut when none is given', () => {
+    const next = run(makeState(), { type: 'harvest/add', ingredientId: 'kale', status: 'ready', today: '2026-10-07' })
+    expect(next.harvest).toEqual([{ ingredientId: 'kale', status: 'ready', glut: false, addedOn: '2026-10-07' }])
+  })
+
   it('returns the same state when the crop is already there exactly as asked', () => {
     const state = makeState({ harvest: [ready('kale')] })
     expect(run(state, { type: 'harvest/add', ingredientId: 'kale', status: 'ready', glut: false, today: '2026-10-07' })).toBe(state)
@@ -200,16 +211,32 @@ describe('shop/toggle', () => {
 })
 
 describe('shop/moveTickedToLarder', () => {
-  it("puts that week's ticked items in the larder and clears those ticks", () => {
+  it('puts the given ticked items in the larder and clears those ticks', () => {
     const state = makeState({ larder: ['egg'], shoppingTicks: { [MON]: ['feta', 'egg'], '2026-10-12': ['basil'] } })
-    const next = run(state, { type: 'shop/moveTickedToLarder', weekStart: MON })
+    const next = run(state, { type: 'shop/moveTickedToLarder', weekStart: MON, ingredientIds: ['feta', 'egg'] })
     expect(next.larder).toEqual(['egg', 'feta'])
     expect(next.shoppingTicks).toEqual({ '2026-10-12': ['basil'] })
   })
 
-  it('returns the same state when nothing is ticked that week', () => {
+  it('leaves ticks that are no longer on the list alone, rather than moving them', () => {
+    // Lemon was ticked for a meal that has since been taken off the week.
+    const state = makeState({ shoppingTicks: { [MON]: ['lemon', 'feta'] } })
+    const next = run(state, { type: 'shop/moveTickedToLarder', weekStart: MON, ingredientIds: ['feta'] })
+    expect(next.larder).toEqual(['feta'])
+    expect(next.shoppingTicks).toEqual({ [MON]: ['lemon'] })
+  })
+
+  it('only moves ids that are actually ticked that week', () => {
+    const state = makeState({ shoppingTicks: { [MON]: ['feta'] } })
+    const next = run(state, { type: 'shop/moveTickedToLarder', weekStart: MON, ingredientIds: ['feta', 'basil'] })
+    expect(next.larder).toEqual(['feta'])
+    expect(next.shoppingTicks).toEqual({})
+  })
+
+  it('returns the same state when none of the given items are ticked that week', () => {
     const state = makeState({ shoppingTicks: { '2026-10-12': ['basil'] } })
-    expect(run(state, { type: 'shop/moveTickedToLarder', weekStart: MON })).toBe(state)
+    expect(run(state, { type: 'shop/moveTickedToLarder', weekStart: MON, ingredientIds: ['basil'] })).toBe(state)
+    expect(run(state, { type: 'shop/moveTickedToLarder', weekStart: '2026-10-12', ingredientIds: [] })).toBe(state)
   })
 })
 
@@ -339,7 +366,7 @@ describe('reducer: safety', () => {
       { type: 'plan/setCooked', date: MON, mealId: 'm1', cooked: true },
       { type: 'plan/fill', meals: { '2026-10-07': meal('m4') } },
       { type: 'shop/toggle', weekStart: MON, ingredientId: 'egg' },
-      { type: 'shop/moveTickedToLarder', weekStart: MON },
+      { type: 'shop/moveTickedToLarder', weekStart: MON, ingredientIds: ['egg'] },
       { type: 'myRecipes/save', recipe: { ...chutney, title: 'Edited' } },
       { type: 'myRecipes/remove', recipeId: chutney.id },
       { type: 'myIngredients/add', ingredient: { ...quince, id: 'my-medlar-q9w8e', name: 'Medlar' } },

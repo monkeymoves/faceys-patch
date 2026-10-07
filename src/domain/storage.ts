@@ -28,7 +28,8 @@ export type BackupProblem = 'too-big' | 'not-json' | 'not-backup' | 'invalid'
 
 export type ParseBackupResult = { ok: true; state: AppState } | { ok: false; reason: BackupProblem; error: string }
 
-const BACKUP_ERRORS: Record<BackupProblem, string> = {
+/** What to tell the person about each kind of bad backup file. */
+export const BACKUP_ERRORS: Readonly<Record<BackupProblem, string>> = {
   'too-big': "That file is too big to be a Facey's Patch backup.",
   'not-json': "That file can't be read. Choose a backup saved from Facey's Patch.",
   'not-backup': "That file isn't a Facey's Patch backup.",

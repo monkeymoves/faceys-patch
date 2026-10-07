@@ -38,24 +38,28 @@ need to buy.
    (`STARTER_LARDER` in src/data).
 3. **Cook**: recipes that use at least one thing from the patch, best first.
    Each card shows the patch veg it uses (little drawings) and a readiness
-   badge: "Ready to cook" or "Need: lemon, feta". Filters: All, Ready to cook,
+   badge: "Ready to cook" or "You'll need: lemon, feta". Filters: All, Ready to cook,
    Veggie, Mine. Recipe detail shows ingredients split into From the patch / In
-   the larder / To buy, then the method, then "Add to week" (pick a day).
+   the larder / To buy, then the method, then "Add to a day" (a day that
+   already holds the recipe says "Already planned").
    **My recipes**: "Write a recipe" opens a form: title, short note
    (optional), minutes, serves, course, ingredients (search the list, give an
    amount, mark optional; "Not on the list?" adds a new ingredient with a name,
    aisle and "I grow this"), and the method as one step per line. Your own
    recipes can be edited and deleted (deleting also removes it from the week,
    after a confirm). A built-in recipe has "Make my own version", which opens
-   the form pre-filled as a new recipe of yours.
-4. **Week**: a week of day cards (Monday first) with prev/next week and a
+   the form pre-filled as a new recipe of yours (prep notes are folded into
+   the amount, as the form has no prep field). Closing a changed form asks
+   before throwing it away.
+4. **Week** ("What's for dinner"): a week of day cards (Monday first) with prev/next week and a
    "This week" jump. Each day lists its meals; tap to view, mark cooked, or
    remove; "+" adds a meal from the matching list. "Fill my week" auto-plans
    the empty days from today onwards. A month view toggle shows a month grid
    with a mark on planned days; tapping a day jumps to that week.
 5. **Shop**: everything the week's planned recipes need that you don't have,
    grouped by aisle, each showing which recipes need it. Tick items off.
-   "Put ticked in the larder" moves them into the larder. "Share list" uses
+   "Put ticked in the larder" moves the ticked items that are on the list
+   into the larder (ticks left over from meals since removed stay put). "Share list" uses
    the Web Share API, falling back to copy-to-clipboard.
 
 Settings (header button): export backup, import backup (with confirm),
@@ -114,7 +118,8 @@ Fills the given empty dates, in date order, one meal per date:
 - `soon` items: a recipe whose `fromPatch` includes a `soon` item is not placed
   on the first two dates of the run if any other candidate exists.
 - Deterministic: same input, same output. Returns `Record<ISODate, RecipeId>`.
-- Dates already holding a meal are never touched. If candidates run out,
+- Dates already holding a meal of a known recipe are never touched (a meal
+  whose recipe no longer exists doesn't count; see `knownMeals`). If candidates run out,
   remaining dates are left empty.
 
 ### Shopping (`buildShoppingList`)
@@ -135,15 +140,24 @@ Monday. Display uses `en-GB`.
 
 - Key `faceys-patch.v1` in localStorage, validated with zod on load.
 - Corrupt or invalid data is never silently discarded: the raw string is
-  copied to `faceys-patch.v1.corrupt.<timestamp>`, the app starts fresh,
-  and the UI shows a visible notice.
+  copied to `faceys-patch.v1.corrupt.<timestamp>`, the app starts fresh (and
+  saves the fresh start, so reloads don't pile up copies), and the UI shows a
+  notice offering the copy as a download.
+- Several copies open at once (tabs, or the installed app beside a browser
+  tab) stay in step through the `storage` event, so a stale copy never
+  overwrites newer changes. If something else on the origin deletes our key,
+  the open app writes its data back.
+- After the first save the app asks the browser to persist storage
+  (`navigator.storage.persist()`), best effort.
 - Unknown ingredient or recipe ids in saved state (e.g. a recipe later
   removed) are tolerated and skipped by selectors, never crash.
 - User-written text is capped by the schema (title 80 chars, note 200, amount
-  40, each step 600, at most 30 steps, 30 ingredients, 300 recipes, 300
-  ingredients) so a hostile or broken backup can't bloat the app.
-- Export is JSON: `{ app: 'faceys-patch', exportedAt, state }`. Import
-  validates with the same schema, rejects files over 1 MB, and replaces state
+  80, prep 80, each step 600, at most 30 steps, 30 ingredients, 300 recipes,
+  300 ingredients) so a hostile or broken backup can't bloat the app. Every id
+  is lower-case letters, digits and hyphens only.
+- Export is compact JSON: `{ app: 'faceys-patch', exportedAt, state }`.
+  Import validates with the same schema, rejects files over 10 MB (more than
+  localStorage can hold, so a real backup always fits), and replaces state
   only after the user confirms.
 
 ## Architecture
