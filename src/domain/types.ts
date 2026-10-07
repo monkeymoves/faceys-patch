@@ -161,6 +161,9 @@ export interface PlannedMeal {
 /** Meals keyed by date. A missing key and an empty array both mean "nothing planned". */
 export type MealPlan = Readonly<Record<ISODate, readonly PlannedMeal[]>>
 
+/** Ids of user-written recipes and user-added ingredients start with this, so they never clash with built-in ids. */
+export const MY_ID_PREFIX = 'my-'
+
 export interface AppState {
   version: 1
   harvest: readonly HarvestItem[]
@@ -169,6 +172,14 @@ export interface AppState {
   plan: MealPlan
   /** Ingredients ticked off the Shop list, keyed by the Monday that starts the week. */
   shoppingTicks: Readonly<Record<ISODate, readonly IngredientId[]>>
+  /** Recipes the user has written. Ids start with MY_ID_PREFIX. */
+  myRecipes: readonly Recipe[]
+  /**
+   * Ingredients the user added because the built-in list didn't have them.
+   * Ids start with MY_ID_PREFIX. Growable ones use art 'seedling' and may
+   * have empty harvestMonths.
+   */
+  myIngredients: readonly Ingredient[]
 }
 
 // ---------------------------------------------------------------------------

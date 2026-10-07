@@ -8,12 +8,17 @@ on:
 permissions:
   contents: read
 
+# One run per branch at a time; a newer push supersedes an older one.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -21,5 +26,26 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
-      - run: npm run build
       - run: npm audit --omit=dev --audit-level=moderate
+      - name: Build for GitHub Pages
+        run: npm run build
+        env:
+          BASE_PATH: /faceys-patch/
+      - uses: actions/upload-pages-artifact@v5
+        if: github.event_name == 'push'
+        with:
+          path: dist
+
+  deploy:
+    if: github.event_name == 'push'
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

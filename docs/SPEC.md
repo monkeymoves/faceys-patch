@@ -39,8 +39,15 @@ need to buy.
 3. **Cook**: recipes that use at least one thing from the patch, best first.
    Each card shows the patch veg it uses (little drawings) and a readiness
    badge: "Ready to cook" or "Need: lemon, feta". Filters: All, Ready to cook,
-   Veggie. Recipe detail shows ingredients split into From the patch / In the
-   larder / To buy, then the method, then "Add to week" (pick a day).
+   Veggie, Mine. Recipe detail shows ingredients split into From the patch / In
+   the larder / To buy, then the method, then "Add to week" (pick a day).
+   **My recipes**: "Write a recipe" opens a form: title, short note
+   (optional), minutes, serves, course, ingredients (search the list, give an
+   amount, mark optional; "Not on the list?" adds a new ingredient with a name,
+   aisle and "I grow this"), and the method as one step per line. Your own
+   recipes can be edited and deleted (deleting also removes it from the week,
+   after a confirm). A built-in recipe has "Make my own version", which opens
+   the form pre-filled as a new recipe of yours.
 4. **Week**: a week of day cards (Monday first) with prev/next week and a
    "This week" jump. Each day lists its meals; tap to view, mark cooked, or
    remove; "+" adds a meal from the matching list. "Fill my week" auto-plans
@@ -77,6 +84,21 @@ For each recipe:
   - minus 1.5 per missing ingredient
   - plus 2 if readiness is `ready`
 - Sort by score descending, then title A to Z (deterministic).
+
+### My recipes and ingredients
+
+- User content is merged into the built-in catalogue before any matching,
+  planning or shopping (`withMyContent(catalogue, state)`). Built-in ids win
+  on a clash, though the `my-` prefix should make clashes impossible.
+- User-written recipes follow the same rules as built-in ones. They appear in
+  Cook suggestions only if they use something from the patch, like any other
+  recipe, and always appear under the Mine filter.
+- `diet` is derived on save, never asked for: no `meat-fish` ingredient means
+  vegetarian; additionally no `dairy-eggs` ingredient and no honey means vegan.
+- New ids are `my-` plus a slug of the title or name plus a short random
+  suffix, created by the caller (the reducer stays pure).
+- Deleting a recipe removes its planned meals. Ingredients added by the user
+  are kept (they may be in the larder or other recipes).
 
 ### Planning (`planWeek`)
 
@@ -115,6 +137,9 @@ Monday. Display uses `en-GB`.
   and the UI shows a visible notice.
 - Unknown ingredient or recipe ids in saved state (e.g. a recipe later
   removed) are tolerated and skipped by selectors, never crash.
+- User-written text is capped by the schema (title 80 chars, note 200, amount
+  40, each step 600, at most 30 steps, 30 ingredients, 300 recipes, 300
+  ingredients) so a hostile or broken backup can't bloat the app.
 - Export is JSON: `{ app: 'faceys-patch', exportedAt, state }`. Import
   validates with the same schema, rejects files over 1 MB, and replaces state
   only after the user confirms.
@@ -147,5 +172,6 @@ Dependency direction: `features -> ui, art, domain, data`; `ui -> art`;
 
 ## Out of scope for v1 (backlog)
 
-Your own recipes, quantities/weights, sync between devices, sowing calendar,
-multiple meal slots per day (lunch/dinner), notifications.
+Quantities/weights, sync between devices, sharing a single recipe with a
+friend, sowing calendar, multiple meal slots per day (lunch/dinner),
+notifications.
