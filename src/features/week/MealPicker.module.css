@@ -1,0 +1,85 @@
+.picker {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.lede {
+  color: var(--ink-2);
+}
+
+.heading {
+  margin-bottom: var(--space-1);
+  font-size: var(--text-md);
+}
+
+.empty {
+  color: var(--ink-2);
+}
+
+.list {
+  display: grid;
+}
+
+.choice {
+  display: grid;
+  grid-template-columns: 4.25rem 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 3.75rem;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-1);
+  border: 0;
+  border-bottom: var(--line-hair) dashed var(--line);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  touch-action: manipulation;
+  transition: background-color var(--duration-quick) var(--ease-out);
+}
+
+li:last-child > .choice {
+  border-bottom: 0;
+}
+
+@media (hover: hover) {
+  .choice:hover {
+    background-color: var(--paper-2);
+  }
+}
+
+.choice:active {
+  background-color: var(--paper-2);
+}
+
+.choice:focus-visible {
+  border-radius: var(--radius-sm);
+}
+
+.veg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vegArt + .vegArt {
+  margin-left: -12px;
+}
+
+.text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  line-height: var(--leading-snug);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-variation-settings: var(--display-axes);
+  font-weight: var(--weight-display);
+  font-size: var(--text-base);
+}
+
+.details {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}

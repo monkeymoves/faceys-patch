@@ -1,0 +1,95 @@
+.month {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.weekdays,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.weekdays {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  text-align: center;
+}
+
+.day {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  justify-items: center;
+  align-content: start;
+  gap: 2px;
+  width: 100%;
+  min-height: 4rem;
+  padding: var(--space-1) 0 var(--space-1);
+  border: var(--line-thin) solid var(--line);
+  border-radius: var(--radius-card);
+  background-color: var(--card);
+  color: var(--ink);
+  touch-action: manipulation;
+  transition: border-color var(--duration-quick) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .day:hover {
+    border-color: var(--line-strong);
+  }
+}
+
+.number {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  font-family: var(--font-display);
+  font-variation-settings: var(--display-axes);
+  font-weight: var(--weight-display);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.ring {
+  position: absolute;
+  inset: -0.2rem;
+  width: calc(100% + 0.4rem);
+  height: calc(100% + 0.4rem);
+  overflow: visible;
+  stroke: var(--marigold);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.today {
+  border-color: var(--marigold);
+}
+
+.past {
+  background-color: transparent;
+}
+
+.outside {
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--ink-2);
+}
+
+.outside .mark {
+  opacity: 0.55;
+}
+
+.mark {
+  display: grid;
+  place-items: center;
+  min-height: 26px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-pebble);
+  background-color: var(--leaf);
+}

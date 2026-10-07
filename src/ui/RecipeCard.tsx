@@ -22,6 +22,11 @@ export interface RecipeCardProps extends Omit<ComponentPropsWithRef<'button'>, '
   missing?: readonly string[]
   /** One optional handwritten note, e.g. "uses your glut". */
   note?: string
+  /**
+   * Replaces the readiness line with a quiet note, for a recipe that uses
+   * nothing from the patch, e.g. 'Nothing from the patch yet'.
+   */
+  statusNote?: string
 }
 
 /** A recipe in the Cook list. It's a button: the title is its name, the rest its description. */
@@ -33,6 +38,7 @@ export function RecipeCard({
   readiness,
   missing = [],
   note,
+  statusNote,
   className,
   type = 'button',
   ...rest
@@ -48,11 +54,13 @@ export function RecipeCard({
       aria-describedby={detailsId}
       {...rest}
     >
-      <span className={styles.veg} aria-hidden="true">
-        {uses.map((veg) => (
-          <Art key={veg.art + veg.name} name={veg.art} size={40} className={styles.vegArt} />
-        ))}
-      </span>
+      {uses.length > 0 && (
+        <span className={styles.veg} aria-hidden="true">
+          {uses.map((veg) => (
+            <Art key={veg.art + veg.name} name={veg.art} size={40} className={styles.vegArt} />
+          ))}
+        </span>
+      )}
       {note && (
         <HandNote tone="leaf" tilt="right" className={styles.note}>
           {note}
@@ -68,18 +76,24 @@ export function RecipeCard({
             {minutes} min
           </span>
           <span className={styles.metaItem}>Serves {serves}</span>
-          <span className="visually-hidden">. Uses {uses.map((veg) => veg.name).join(', ')}. </span>
-        </span>
-        <span className={cx(styles.readiness, ready ? styles.ready : styles.need)}>
-          <Icon name={ready ? 'tick' : 'basket'} size={20} className={styles.readyIcon} />
-          {ready ? (
-            'Ready to cook'
-          ) : (
-            <span>
-              You'll need: <span className={styles.missing}>{missing.join(', ')}</span>
-            </span>
+          {uses.length > 0 && (
+            <span className="visually-hidden">. Uses {uses.map((veg) => veg.name).join(', ')}. </span>
           )}
         </span>
+        {statusNote ? (
+          <span className={cx(styles.readiness, styles.quiet)}>{statusNote}</span>
+        ) : (
+          <span className={cx(styles.readiness, ready ? styles.ready : styles.need)}>
+            <Icon name={ready ? 'tick' : 'basket'} size={20} className={styles.readyIcon} />
+            {ready ? (
+              'Ready to cook'
+            ) : (
+              <span>
+                You'll need: <span className={styles.missing}>{missing.join(', ')}</span>
+              </span>
+            )}
+          </span>
+        )}
       </span>
     </button>
   )
