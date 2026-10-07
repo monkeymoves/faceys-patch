@@ -1,4 +1,5 @@
 import type { ArtKey } from '../domain/types'
+import { drawings } from './drawings'
 
 export interface ArtProps {
   name: ArtKey
@@ -9,20 +10,23 @@ export interface ArtProps {
   className?: string
 }
 
-/** Placeholder until the drawings land: a dashed circle labelled with the key. */
+/** A hand-drawn illustration of a crop, in the shed-notebook ink style. */
 export function Art({ name, size = 64, title, className }: ArtProps) {
+  const Drawing = drawings[name]
   return (
     <svg
+      xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 64 64"
       width={size}
       height={size}
       className={className}
       role={title ? 'img' : undefined}
       aria-hidden={title ? undefined : true}
+      focusable="false"
       data-art={name}
     >
       {title && <title>{title}</title>}
-      <circle cx="32" cy="32" r="26" fill="none" stroke="currentColor" strokeDasharray="4 4" />
+      <Drawing />
     </svg>
   )
 }
