@@ -35,7 +35,11 @@ export function StoreProvider({ children, storage = browserStorage, builtIn = CA
       if (next === latest.current) return
       latest.current = next
       setState(next)
-      if (!canSave) return
+      if (!canSave) {
+        // Say so again on every change: nothing is being kept, and that must never be silent.
+        setProblem('storage-unavailable')
+        return
+      }
 
       const result = saveState(storage, next)
       if (result.ok) {
@@ -47,7 +51,13 @@ export function StoreProvider({ children, storage = browserStorage, builtIn = CA
     [canSave, storage],
   )
 
-  const catalogue = useMemo(() => withMyContent(builtIn, state), [builtIn, state])
+  // Only the person's own recipes and ingredients change the catalogue, so a
+  // tick on the shopping list doesn't rebuild it and re-run matching.
+  const { myRecipes, myIngredients } = state
+  const catalogue = useMemo(
+    () => withMyContent(builtIn, { myRecipes, myIngredients }),
+    [builtIn, myRecipes, myIngredients],
+  )
   const dismissProblem = useCallback(() => setProblem(undefined), [])
 
   const store = useMemo(

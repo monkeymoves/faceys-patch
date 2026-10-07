@@ -69,6 +69,28 @@ describe('StoreProvider', () => {
     expect(writes).toEqual([])
   })
 
+  it('reminds the person after every change that nothing is being saved, even once dismissed', () => {
+    const storage: KeyValueStorage = {
+      getItem: () => {
+        throw new Error('blocked')
+      },
+      setItem: () => undefined,
+    }
+    const { result } = renderStore(storage)
+    act(() => result.current.dismissProblem())
+    expect(result.current.problem).toBeUndefined()
+
+    act(() => result.current.dispatch(addCourgettes))
+    expect(result.current.problem).toBe('storage-unavailable')
+  })
+
+  it('keeps the same catalogue when only the patch, larder or plan change', () => {
+    const { result } = renderStore(memoryStorage())
+    const before = result.current.catalogue
+    act(() => result.current.dispatch(addCourgettes))
+    expect(result.current.catalogue).toBe(before)
+  })
+
   it('reports a full device, and clears the problem once a save works again', () => {
     let full = true
     const backing = memoryStorage()
