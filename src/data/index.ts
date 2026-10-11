@@ -1,8 +1,11 @@
-import type { Catalogue, IngredientId } from '../domain/types'
+import { buildAlmanac } from '../domain/almanac'
+import type { Almanac, Catalogue, IngredientId } from '../domain/types'
+import { CROP_GUIDES } from './growing'
 import { INGREDIENTS } from './ingredients'
+import { JOBS } from './jobs'
 import { RECIPES } from './recipes'
 
-export { INGREDIENTS, RECIPES }
+export { CROP_GUIDES, INGREDIENTS, JOBS, RECIPES }
 
 /** The usual suspects most kitchens have. Used by "Add the usual suspects" in the Larder. */
 export const STARTER_LARDER: readonly IngredientId[] = [
@@ -32,3 +35,6 @@ export const CATALOGUE: Catalogue = {
   ingredients: new Map(INGREDIENTS.map((i) => [i.id, i])),
   recipes: RECIPES,
 }
+
+/** When to sow and plant each crop, and the jobs that come round each month. */
+export const ALMANAC: Almanac = buildAlmanac(CROP_GUIDES, JOBS)

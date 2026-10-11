@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { CATALOGUE } from '../data'
+import { ALMANAC, CATALOGUE } from '../data'
 import {
   loadState,
   reducer,
@@ -7,6 +7,7 @@ import {
   STORAGE_KEY,
   withMyContent,
   type Action,
+  type Almanac,
   type AppState,
   type Catalogue,
   type KeyValueStorage,
@@ -18,6 +19,7 @@ interface StoreProviderProps {
   children: ReactNode
   storage?: KeyValueStorage
   builtIn?: Catalogue
+  almanac?: Almanac
 }
 
 /**
@@ -28,7 +30,34 @@ function askToPersist() {
   void navigator.storage?.persist?.().catch(() => false)
 }
 
-export function StoreProvider({ children, storage = browserStorage, builtIn = CATALOGUE }: StoreProviderProps) {
+/**
+ * True when saved data was written by an older copy of the app (one still
+ * open from before jobs existed), whose schema drops the keys it doesn't know.
+ * It had no jobs to give, so ours are kept rather than lost.
+ */
+function lacksJobs(raw: string | null): boolean {
+  if (raw === null) return false
+  try {
+    const value: unknown = JSON.parse(raw)
+    return typeof value === 'object' && value !== null && !('myJobs' in value)
+  } catch {
+    return false
+  }
+}
+
+const withOurJobs = (state: AppState, ours: AppState): AppState => ({
+  ...state,
+  myJobs: ours.myJobs,
+  jobsDone: ours.jobsDone,
+  hiddenJobs: ours.hiddenJobs,
+})
+
+export function StoreProvider({
+  children,
+  storage = browserStorage,
+  builtIn = CATALOGUE,
+  almanac = ALMANAC,
+}: StoreProviderProps) {
   const [loaded] = useState(() => loadState(storage))
   const [state, setState] = useState(loaded.state)
   const [problem, setProblem] = useState<StorageProblem | undefined>(loaded.notice)
@@ -84,9 +113,12 @@ export function StoreProvider({ children, storage = browserStorage, builtIn = CA
         return
       }
       const fresh = loadState(storage)
-      latest.current = fresh.state
-      setState(fresh.state)
+      const next = lacksJobs(event.newValue) ? withOurJobs(fresh.state, latest.current) : fresh.state
+      latest.current = next
+      setState(next)
       if (fresh.notice) setProblem(fresh.notice)
+      // Write the jobs back, so the older copy's save doesn't stand.
+      if (next !== fresh.state) save(next)
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
@@ -107,8 +139,8 @@ export function StoreProvider({ children, storage = browserStorage, builtIn = CA
   )
 
   const store = useMemo(
-    () => ({ state, dispatch, catalogue, problem, dismissProblem, readCorruptCopy }),
-    [state, dispatch, catalogue, problem, dismissProblem, readCorruptCopy],
+    () => ({ state, dispatch, catalogue, almanac, problem, dismissProblem, readCorruptCopy }),
+    [state, dispatch, catalogue, almanac, problem, dismissProblem, readCorruptCopy],
   )
   return <StoreContext value={store}>{children}</StoreContext>
 }

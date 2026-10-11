@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { initialState, reducer, type Action } from './state'
-import { deepFreeze, makeRecipe, makeState, ready, soon } from './test-fixtures'
+import { deepFreeze, makeMyJob, makeRecipe, makeState, ready, soon } from './test-fixtures'
 import type { AppState, Ingredient, Recipe } from './types'
 
 /** Runs the reducer on a deeply frozen state, so any mutation throws. */
@@ -16,6 +16,9 @@ describe('initialState', () => {
       shoppingTicks: {},
       myRecipes: [],
       myIngredients: [],
+      myJobs: [],
+      jobsDone: {},
+      hiddenJobs: [],
     })
   })
 
@@ -303,6 +306,103 @@ describe('myIngredients/add', () => {
   })
 })
 
+describe('jobs/toggleDone', () => {
+  it('ticks a job for that month, and unticks it again', () => {
+    const state = makeState()
+    const ticked = run(state, { type: 'jobs/toggleDone', jobId: 'mulch-beds', month: '2026-10' })
+    expect(ticked.jobsDone).toEqual({ '2026-10': ['mulch-beds'] })
+    const unticked = run(ticked, { type: 'jobs/toggleDone', jobId: 'mulch-beds', month: '2026-10' })
+    expect(unticked.jobsDone).toEqual({})
+  })
+
+  it('keeps each month separate, so a yearly job comes back next year', () => {
+    const state = makeState({ jobsDone: { '2025-10': ['mulch-beds'] } })
+    const next = run(state, { type: 'jobs/toggleDone', jobId: 'mulch-beds', month: '2026-10' })
+    expect(next.jobsDone).toEqual({ '2025-10': ['mulch-beds'], '2026-10': ['mulch-beds'] })
+  })
+
+  it('refuses a key that is not a month', () => {
+    const state = makeState()
+    expect(run(state, { type: 'jobs/toggleDone', jobId: 'mulch-beds', month: '2026-13' })).toBe(state)
+  })
+
+  it('lets the oldest months of ticks go rather than refuse a new tick after twenty years', () => {
+    const months = Object.fromEntries(
+      Array.from({ length: 240 }, (_, i) => [`${2000 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`, ['x']]),
+    )
+    const state = makeState({ jobsDone: months })
+    const next = run(state, { type: 'jobs/toggleDone', jobId: 'mulch-beds', month: '2026-10' })
+    expect(Object.keys(next.jobsDone)).toHaveLength(240)
+    expect(next.jobsDone['2000-01']).toBeUndefined()
+    expect(next.jobsDone['2000-02']).toEqual(['x'])
+    expect(next.jobsDone['2026-10']).toEqual(['mulch-beds'])
+  })
+})
+
+describe('jobs/hide and jobs/unhide', () => {
+  it('puts a built-in job aside once, and brings it back', () => {
+    const state = makeState()
+    const hidden = run(state, { type: 'jobs/hide', jobId: 'net-brassicas' })
+    expect(hidden.hiddenJobs).toEqual(['net-brassicas'])
+    expect(run(hidden, { type: 'jobs/hide', jobId: 'net-brassicas' })).toBe(hidden)
+    const back = run(hidden, { type: 'jobs/unhide', jobId: 'net-brassicas' })
+    expect(back.hiddenJobs).toEqual([])
+    expect(run(back, { type: 'jobs/unhide', jobId: 'net-brassicas' })).toBe(back)
+  })
+})
+
+describe('myJobs/save', () => {
+  it('adds a new job of mine to the end', () => {
+    const state = makeState({ myJobs: [makeMyJob('my-prune-apple-a1b2c', 'Prune the apple tree', { months: [1] })] })
+    const job = makeMyJob('my-net-cabbages-x9y8z', 'Net the cabbages', { months: [5, 6] })
+    expect(run(state, { type: 'myJobs/save', job }).myJobs).toEqual([...state.myJobs, job])
+  })
+
+  it('replaces a job with the same id where it stands', () => {
+    const first = makeMyJob('my-a-11111', 'A')
+    const second = makeMyJob('my-b-22222', 'B')
+    const state = makeState({ myJobs: [first, second] })
+    const edited = { ...first, title: 'A, renamed' }
+    expect(run(state, { type: 'myJobs/save', job: edited }).myJobs).toEqual([edited, second])
+  })
+
+  it('returns the same state when saving the job exactly as stored', () => {
+    const job = makeMyJob('my-a-11111', 'A')
+    const state = makeState({ myJobs: [job] })
+    expect(run(state, { type: 'myJobs/save', job })).toBe(state)
+  })
+
+  it('refuses a job that is both yearly and one-off, or neither', () => {
+    const state = makeState()
+    const both = makeMyJob('my-a-11111', 'A', { months: [3], on: '2026-03-14' })
+    const neither = makeMyJob('my-b-22222', 'B', { months: [] })
+    expect(run(state, { type: 'myJobs/save', job: both })).toBe(state)
+    expect(run(state, { type: 'myJobs/save', job: neither })).toBe(state)
+  })
+
+  it('refuses a blank title', () => {
+    const state = makeState()
+    expect(run(state, { type: 'myJobs/save', job: makeMyJob('my-a-11111', '   ') })).toBe(state)
+  })
+})
+
+describe('myJobs/remove', () => {
+  it('removes the job and any ticks against it, dropping months left empty', () => {
+    const state = makeState({
+      myJobs: [makeMyJob('my-a-11111', 'A'), makeMyJob('my-b-22222', 'B')],
+      jobsDone: { '2026-10': ['my-a-11111'], '2025-10': ['my-a-11111', 'mulch-beds'] },
+    })
+    const next = run(state, { type: 'myJobs/remove', jobId: 'my-a-11111' })
+    expect(next.myJobs).toEqual([makeMyJob('my-b-22222', 'B')])
+    expect(next.jobsDone).toEqual({ '2025-10': ['mulch-beds'] })
+  })
+
+  it('returns the same state when there is no such job of mine', () => {
+    const state = makeState({ myJobs: [makeMyJob('my-a-11111', 'A')] })
+    expect(run(state, { type: 'myJobs/remove', jobId: 'my-zzz-99999' })).toBe(state)
+  })
+})
+
 describe('state/replace and state/reset', () => {
   it('replace swaps in the given state', () => {
     const replacement = makeState({ larder: ['feta'] })
@@ -311,6 +411,11 @@ describe('state/replace and state/reset', () => {
 
   it('reset starts afresh', () => {
     expect(run(makeState({ larder: ['feta'], myRecipes: [chutney] }), { type: 'state/reset' })).toEqual(initialState())
+  })
+
+  it('reset clears jobs too', () => {
+    const state = makeState({ myJobs: [makeMyJob('my-a-11111', 'A')], hiddenJobs: ['mulch-beds'] })
+    expect(run(state, { type: 'state/reset' })).toEqual(initialState())
   })
 
   it('reset returns the same state when it is already fresh', () => {

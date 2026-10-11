@@ -1,0 +1,476 @@
+/* Grow screen: sow and plant this month, the jobs, the crop calendar and its sheets. */
+
+.bar {
+  margin-top: var(--space-5);
+}
+
+.message {
+  margin-top: var(--space-4);
+}
+
+.section {
+  margin-top: var(--space-6);
+}
+
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+}
+
+.sectionHeading {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-md);
+}
+
+.count {
+  margin-bottom: var(--space-3);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.groupNote {
+  margin-top: var(--space-2);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+/* Sow and plant */
+
+.activity {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.activityHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-2);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-variation-settings: normal;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0;
+}
+
+.swatch {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 5px 4px 5px 3px;
+}
+
+.sowIndoors {
+  background-color: var(--mark-sow-in);
+}
+
+.sowOutdoors {
+  background-color: var(--mark-sow-out);
+}
+
+.plantOut {
+  background-color: var(--mark-plant);
+}
+
+.harvest {
+  background-color: var(--mark-harvest);
+}
+
+.cropChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.cropChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--target-min);
+  padding: var(--space-1) var(--space-4) var(--space-1) var(--space-2);
+  border: var(--line-thin) solid var(--line);
+  border-radius: var(--radius-pebble);
+  background-color: var(--card);
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-snug);
+  text-align: left;
+  touch-action: manipulation;
+  transition: border-color var(--duration-quick) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .cropChip:hover {
+    border-color: var(--line-strong);
+  }
+}
+
+.chipArt {
+  flex-shrink: 0;
+}
+
+/* Jobs */
+
+.kindGroup {
+  margin-top: var(--space-4);
+}
+
+.kindHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  padding-bottom: var(--space-1);
+  border-bottom: var(--line-hair) dashed var(--line);
+  font-size: var(--text-base);
+}
+
+.kindIcon {
+  flex-shrink: 0;
+  color: var(--ink-2);
+}
+
+.overdueHeading {
+  color: var(--tomato-deep);
+}
+
+.overdueHeading .kindIcon {
+  color: var(--tomato-deep);
+}
+
+.jobs {
+  display: grid;
+}
+
+.jobRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  border-bottom: var(--line-hair) solid var(--line);
+}
+
+.jobRow:last-child {
+  border-bottom: 0;
+}
+
+.jobCheck {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.about {
+  flex-shrink: 0;
+  margin-top: var(--space-1);
+  color: var(--ink-2);
+}
+
+.addJob {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-5);
+}
+
+/* Put aside: native disclosure, drawn to match the Larder's. */
+
+.details {
+  margin-top: var(--space-6);
+  border-top: var(--line-hair) solid var(--line);
+  border-bottom: var(--line-hair) solid var(--line);
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--control-md);
+  padding: var(--space-2) var(--space-1);
+  color: var(--ink-2);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  list-style: none;
+  touch-action: manipulation;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.chevron {
+  transition: rotate var(--duration-quick) var(--ease-out);
+}
+
+.details[open] > .summary .chevron {
+  rotate: 90deg;
+}
+
+.asideList {
+  display: grid;
+  padding: var(--space-1) 0 var(--space-3);
+}
+
+.asideRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--target-min);
+  padding-left: var(--space-1);
+}
+
+.asideTitle {
+  color: var(--ink-2);
+}
+
+/* All crops */
+
+.calendarWrap {
+  margin-top: var(--space-5);
+}
+
+.calendar {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.nothingFound {
+  color: var(--ink-2);
+}
+
+.cropList {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.cropRow {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border: var(--line-thin) solid var(--line);
+  border-radius: var(--radius-card);
+  background-color: var(--card);
+}
+
+.cropOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-self: start;
+  min-height: var(--target-min);
+  margin-left: calc(var(--space-1) * -1);
+  padding: 0 var(--space-2) 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink);
+  font-weight: var(--weight-bold);
+  text-align: left;
+  touch-action: manipulation;
+}
+
+@media (hover: hover) {
+  .cropOpen:hover {
+    background-color: var(--paper-2);
+  }
+}
+
+.cropName {
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.18em;
+}
+
+.cropStrip {
+  margin-top: var(--space-1);
+}
+
+/* Crop guide sheet */
+
+.guide {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.guideArt {
+  display: grid;
+  place-items: center;
+  padding-block: var(--space-1);
+  color: var(--ink);
+}
+
+.guideYear {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.guideWhen {
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.guideNote {
+  color: var(--ink-2);
+}
+
+.tips {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.tipsHeading {
+  font-size: var(--text-md);
+}
+
+.tipsList {
+  display: grid;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+}
+
+.tipsList li::marker {
+  color: var(--leaf);
+}
+
+.guideActions {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: var(--line-hair) dashed var(--line);
+}
+
+/* Job sheet */
+
+.job {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.jobWhen {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-2);
+  font-weight: var(--weight-medium);
+}
+
+.jobKindIcon {
+  flex-shrink: 0;
+}
+
+.jobArt {
+  display: grid;
+  place-items: center;
+  color: var(--ink);
+}
+
+.jobNote {
+  white-space: pre-line;
+}
+
+.jobActions {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: var(--line-hair) dashed var(--line);
+}
+
+/* Job form */
+
+.form {
+  display: grid;
+  gap: var(--space-5);
+  padding-bottom: var(--space-2);
+}
+
+.when {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.fullSegments {
+  display: flex;
+  width: 100%;
+}
+
+/* The months fieldset is laid out like any other field. */
+.months {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.monthsLabel {
+  padding: 0;
+  font-weight: var(--weight-bold);
+}
+
+.monthChips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+@media (min-width: 560px) {
+  .monthChips {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.monthChip {
+  width: 100%;
+  justify-content: center;
+  padding-inline: var(--space-2);
+}
+
+.dateField {
+  max-width: 16rem;
+}
+
+.fieldError {
+  color: var(--tomato-deep);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+/* Save and Cancel side by side, Save on the right; they stack when the text is big. */
+.footer {
+  display: flex;
+  flex-direction: row-reverse;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.footer > * {
+  flex: 1 1 9rem;
+}
+
+@media (min-width: 900px) {
+  .footer > * {
+    flex: 0 0 auto;
+    min-width: 8rem;
+  }
+}

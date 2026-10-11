@@ -104,7 +104,7 @@ describe('SettingsSheet', () => {
 
     const confirm = await screen.findByRole('alertdialog', { name: 'Replace everything with this backup?' })
     expect(confirm).toHaveTextContent(
-      'It has 2 things on the patch, 1 thing in the larder, 2 planned meals and no recipes of your own.',
+      'It has 2 things on the patch, 1 thing in the larder, 2 planned meals, no recipes of your own and no jobs of your own.',
     )
     expect(within(confirm).getByRole('button', { name: 'Cancel' })).toHaveFocus()
     await user.click(within(confirm).getByRole('button', { name: 'Replace everything' }))

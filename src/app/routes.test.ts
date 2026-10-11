@@ -11,6 +11,10 @@ describe('parseHash', () => {
     ['#/shop?with=courgette', { tab: 'shop' }],
     ['#/nonsense', { tab: 'patch' }],
     ['#/cook?with=', { tab: 'cook' }],
+    ['#/grow', { tab: 'grow' }],
+    ['#/grow?crop=tomato', { tab: 'grow', crop: 'tomato' }],
+    ['#/grow?with=tomato', { tab: 'grow' }],
+    ['#/cook?crop=tomato', { tab: 'cook' }],
   ])('%s -> %o', (hash, route) => {
     expect(parseHash(hash)).toEqual(route)
   })
@@ -18,7 +22,7 @@ describe('parseHash', () => {
 
 describe('routeToHash', () => {
   it('round-trips through parseHash', () => {
-    for (const route of [{ tab: 'larder' }, { tab: 'cook', with: 'runner-bean' }] as const) {
+    for (const route of [{ tab: 'larder' }, { tab: 'cook', with: 'runner-bean' }, { tab: 'grow', crop: 'garlic' }] as const) {
       expect(parseHash(routeToHash(route))).toEqual(route)
     }
   })

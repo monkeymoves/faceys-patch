@@ -22,14 +22,32 @@ export const sameName = (a: string, b: string) => fold(a) === fold(b)
 /** A to Z by name, the British way. */
 export const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, 'en-GB')
 
+/** First words that are names, so they keep their capital mid-sentence ('Brussels sprouts'). */
+const PROPER_NOUNS: ReadonlySet<string> = new Set([
+  'Brussels',
+  'Jerusalem',
+  'French',
+  'Florence',
+  'Swiss',
+  'Chinese',
+  'Italian',
+  'Welsh',
+  'Spanish',
+  'Greek',
+  'Thai',
+  'Moroccan',
+  'Indian',
+])
+
 /**
  * A name as it reads mid-sentence: 'Courgettes' becomes 'courgettes'. Only the
- * first letter changes, and a first word in capitals ('BBQ sauce') is left alone.
+ * first letter changes, and a first word in capitals ('BBQ sauce') or a name
+ * ('Brussels sprouts') is left alone.
  */
 export function midSentence(name: string): string {
   const [firstWord = ''] = name.split(' ')
   const acronym = firstWord.length > 1 && /\p{Lu}/u.test(firstWord) && firstWord === firstWord.toLocaleUpperCase('en-GB')
-  if (acronym) return name
+  if (acronym || PROPER_NOUNS.has(firstWord)) return name
   return name.charAt(0).toLocaleLowerCase('en-GB') + name.slice(1)
 }
 

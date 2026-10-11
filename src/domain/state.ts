@@ -1,4 +1,4 @@
-import { isValidState } from './schema'
+import { isValidState, LIMITS } from './schema'
 import type {
   AppState,
   HarvestItem,
@@ -6,14 +6,27 @@ import type {
   Ingredient,
   IngredientId,
   ISODate,
+  ISOMonth,
   MealPlan,
+  MyJob,
   PlannedMeal,
   Recipe,
   RecipeId,
 } from './types'
 
 export function initialState(): AppState {
-  return { version: 1, harvest: [], larder: [], plan: {}, shoppingTicks: {}, myRecipes: [], myIngredients: [] }
+  return {
+    version: 1,
+    harvest: [],
+    larder: [],
+    plan: {},
+    shoppingTicks: {},
+    myRecipes: [],
+    myIngredients: [],
+    myJobs: [],
+    jobsDone: {},
+    hiddenJobs: [],
+  }
 }
 
 /**
@@ -37,6 +50,13 @@ export type Action =
   | { type: 'myRecipes/save'; recipe: Recipe }
   | { type: 'myRecipes/remove'; recipeId: RecipeId }
   | { type: 'myIngredients/add'; ingredient: Ingredient }
+  /** Tick a job (built-in or own) off, or back on, for one month. */
+  | { type: 'jobs/toggleDone'; jobId: string; month: ISOMonth }
+  /** Put a built-in job aside as not for this plot, or bring it back. */
+  | { type: 'jobs/hide'; jobId: string }
+  | { type: 'jobs/unhide'; jobId: string }
+  | { type: 'myJobs/save'; job: MyJob }
+  | { type: 'myJobs/remove'; jobId: string }
   | { type: 'state/replace'; state: AppState }
   | { type: 'state/reset' }
 
@@ -97,13 +117,37 @@ function withoutRecipe(plan: MealPlan, recipeId: RecipeId): MealPlan {
 
 const withPlan = (state: AppState, plan: MealPlan): AppState => (plan === state.plan ? state : { ...state, plan })
 
+/** `record` with its oldest keys dropped until at most `max` remain. Keys sort as dates ('YYYY-MM'). */
+function keepNewest<T>(record: Readonly<Record<string, T>>, max: number): Readonly<Record<string, T>> {
+  const keys = Object.keys(record)
+  if (keys.length <= max) return record
+  const keep = new Set(keys.sort().slice(keys.length - max))
+  return Object.fromEntries(Object.entries(record).filter(([key]) => keep.has(key)))
+}
+
+/** `record` without `id` in any of its lists, dropping lists left empty. Returns `record` itself if `id` was nowhere. */
+function withoutEverywhere(
+  record: Readonly<Record<string, readonly string[]>>,
+  id: string,
+): Readonly<Record<string, readonly string[]>> {
+  if (!Object.values(record).some((list) => list.includes(id))) return record
+  return Object.fromEntries(
+    Object.entries(record)
+      .map(([key, list]) => [key, without(list, id)] as const)
+      .filter(([, list]) => list.length > 0),
+  )
+}
+
 const isFresh = (state: AppState) =>
   state.harvest.length === 0 &&
   state.larder.length === 0 &&
   Object.keys(state.plan).length === 0 &&
   Object.keys(state.shoppingTicks).length === 0 &&
   state.myRecipes.length === 0 &&
-  state.myIngredients.length === 0
+  state.myIngredients.length === 0 &&
+  state.myJobs.length === 0 &&
+  Object.keys(state.jobsDone).length === 0 &&
+  state.hiddenJobs.length === 0
 
 function apply(state: AppState, action: Action): AppState {
   switch (action.type) {
@@ -187,6 +231,37 @@ function apply(state: AppState, action: Action): AppState {
       const { ingredient } = action
       if (state.myIngredients.some((existing) => existing.id === ingredient.id)) return state
       return { ...state, myIngredients: [...state.myIngredients, ingredient] }
+    }
+    case 'jobs/toggleDone': {
+      const { jobId, month } = action
+      const done = state.jobsDone[month] ?? []
+      const toggled = done.includes(jobId) ? without(done, jobId) : [...done, jobId]
+      // Twenty years of ticks is plenty: let the oldest months go rather than refuse new ticks.
+      return { ...state, jobsDone: keepNewest(setList(state.jobsDone, month, toggled), LIMITS.doneMonths) }
+    }
+    case 'jobs/hide': {
+      const hiddenJobs = addUnique(state.hiddenJobs, [action.jobId])
+      return hiddenJobs === state.hiddenJobs ? state : { ...state, hiddenJobs }
+    }
+    case 'jobs/unhide': {
+      const hiddenJobs = without(state.hiddenJobs, action.jobId)
+      return hiddenJobs === state.hiddenJobs ? state : { ...state, hiddenJobs }
+    }
+    case 'myJobs/save': {
+      const { job } = action
+      const index = state.myJobs.findIndex((existing) => existing.id === job.id)
+      if (index === -1) return { ...state, myJobs: [...state.myJobs, job] }
+      if (state.myJobs[index] === job) return state
+      return { ...state, myJobs: state.myJobs.map((existing, i) => (i === index ? job : existing)) }
+    }
+    case 'myJobs/remove': {
+      const { jobId } = action
+      if (!state.myJobs.some((job) => job.id === jobId)) return state
+      return {
+        ...state,
+        myJobs: state.myJobs.filter((job) => job.id !== jobId),
+        jobsDone: withoutEverywhere(state.jobsDone, jobId),
+      }
     }
     case 'state/replace':
       return action.state

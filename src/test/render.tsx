@@ -4,7 +4,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { NavigationProvider } from '../app/navigation'
 import { StoreProvider } from '../app/store'
 import { ViewedWeekProvider } from '../app/viewedWeek'
-import { initialState, STORAGE_KEY, type AppState, type KeyValueStorage } from '../domain'
+import { initialState, STORAGE_KEY, type Almanac, type AppState, type Catalogue, type KeyValueStorage } from '../domain'
 
 /** An in-memory stand-in for localStorage, so tests can read what was saved. */
 export function memoryStorage(initial: Record<string, string> = {}) {
@@ -26,6 +26,10 @@ export function memoryStorage(initial: Record<string, string> = {}) {
 export interface RenderAppOptions {
   /** Starting state; merged over an empty state. */
   state?: Partial<AppState>
+  /** Growing data to use instead of the real thing, so a test doesn't move when the advice is edited. */
+  almanac?: Almanac
+  /** Built-in ingredients and recipes to use instead of the real ones. */
+  builtIn?: Catalogue
 }
 
 /**
@@ -33,11 +37,11 @@ export interface RenderAppOptions {
  * usual Testing Library result plus a userEvent instance and `saved()` to
  * inspect what was persisted.
  */
-export function renderWithApp(ui: ReactElement, { state }: RenderAppOptions = {}) {
+export function renderWithApp(ui: ReactElement, { state, almanac, builtIn }: RenderAppOptions = {}) {
   const seeded: AppState = { ...initialState(), ...state }
   const memory = memoryStorage({ [STORAGE_KEY]: JSON.stringify(seeded) })
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <StoreProvider storage={memory.storage}>
+    <StoreProvider storage={memory.storage} almanac={almanac} builtIn={builtIn}>
       <NavigationProvider>
         <ViewedWeekProvider>{children}</ViewedWeekProvider>
       </NavigationProvider>

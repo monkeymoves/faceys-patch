@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { appStateSchema, isValidState } from './schema'
 import { initialState } from './state'
-import { makeRecipe, makeState, ready } from './test-fixtures'
+import { makeMyJob, makeRecipe, makeState, ready } from './test-fixtures'
 import type { Ingredient, Recipe } from './types'
 
 const valid = (value: unknown) => appStateSchema.safeParse(value).success
@@ -170,6 +170,60 @@ describe('appStateSchema: my ingredients (SPEC: storage caps)', () => {
 
   it('rejects two ingredients with the same id', () => {
     expect(valid({ ...fullState, myIngredients: [myIngredient(), myIngredient()] })).toBe(false)
+  })
+})
+
+describe('appStateSchema: my jobs (SPEC: storage caps)', () => {
+  const withJob = (job: unknown) => makeState({ myJobs: [job as never] })
+
+  it('accepts a yearly job and a one-off job', () => {
+    expect(valid(withJob(makeMyJob('my-prune-a1b2c', 'Prune the apple tree', { months: [1, 2], kind: 'tend' })))).toBe(true)
+    expect(valid(withJob(makeMyJob('my-manure-a1b2c', 'Collect manure', { months: [], on: '2026-10-14' })))).toBe(true)
+  })
+
+  it('rejects a job that is neither yearly nor one-off, or both', () => {
+    expect(valid(withJob(makeMyJob('my-a-11111', 'A', { months: [] })))).toBe(false)
+    expect(valid(withJob(makeMyJob('my-a-11111', 'A', { months: [3], on: '2026-03-01' })))).toBe(false)
+  })
+
+  it('rejects bad months, a bad date, a blank title, an unknown kind and a built-in looking id', () => {
+    expect(valid(withJob(makeMyJob('my-a-11111', 'A', { months: [0] })))).toBe(false)
+    expect(valid(withJob(makeMyJob('my-a-11111', 'A', { months: [13] })))).toBe(false)
+    expect(valid(withJob(makeMyJob('my-a-11111', 'A', { months: [3, 3] })))).toBe(false)
+    expect(valid(withJob(makeMyJob('my-a-11111', 'A', { months: [], on: '2026-02-30' })))).toBe(false)
+    expect(valid(withJob(makeMyJob('my-a-11111', '  ')))).toBe(false)
+    expect(valid(withJob({ ...makeMyJob('my-a-11111', 'A'), kind: 'dance' }))).toBe(false)
+    expect(valid(withJob(makeMyJob('mulch-beds', 'A')))).toBe(false)
+  })
+
+  it('caps the title at 80 and the note at 320 characters', () => {
+    expect(valid(withJob(makeMyJob('my-a-11111', 'x'.repeat(80))))).toBe(true)
+    expect(valid(withJob(makeMyJob('my-a-11111', 'x'.repeat(81))))).toBe(false)
+    expect(valid(withJob(makeMyJob('my-a-11111', 'A', { note: 'x'.repeat(320) })))).toBe(true)
+    expect(valid(withJob(makeMyJob('my-a-11111', 'A', { note: 'x'.repeat(321) })))).toBe(false)
+  })
+
+  it('accepts 300 jobs but not 301, and rejects two with the same id', () => {
+    const jobs = (count: number) => repeat(count, (i) => makeMyJob(`my-job-${i}`, `Job ${i}`))
+    expect(valid(makeState({ myJobs: jobs(300) }))).toBe(true)
+    expect(valid(makeState({ myJobs: jobs(301) }))).toBe(false)
+    expect(valid(makeState({ myJobs: [makeMyJob('my-a-11111', 'A'), makeMyJob('my-a-11111', 'B')] }))).toBe(false)
+  })
+
+  it('keys ticked jobs by month and caps them', () => {
+    expect(valid(makeState({ jobsDone: { '2026-10': ['mulch-beds', 'my-a-11111'] } }))).toBe(true)
+    expect(valid(makeState({ jobsDone: { '2026-13': ['mulch-beds'] } }))).toBe(false)
+    expect(valid(makeState({ jobsDone: { '2026-10-01': ['mulch-beds'] } }))).toBe(false)
+    expect(valid(makeState({ jobsDone: { '2026-10': ['mulch-beds', 'mulch-beds'] } }))).toBe(false)
+    const months = Object.fromEntries(repeat(241, (i) => [`${1900 + Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`, ['x']]))
+    expect(valid(makeState({ jobsDone: months }))).toBe(false)
+  })
+
+  it('fills in empty jobs, ticks and hidden lists for saved state from before they existed', () => {
+    const { myJobs: _j, jobsDone: _d, hiddenJobs: _h, ...older } = makeState()
+    const parsed = appStateSchema.safeParse(older)
+    expect(parsed.success).toBe(true)
+    expect(parsed.data).toMatchObject({ myJobs: [], jobsDone: {}, hiddenJobs: [] })
   })
 })
 

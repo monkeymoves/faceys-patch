@@ -1,4 +1,4 @@
-import type { ISODate } from './types'
+import type { ISODate, ISOMonth } from './types'
 
 const pad = (value: number, width: number) => String(value).padStart(width, '0')
 
@@ -80,6 +80,50 @@ export function isSameMonth(a: ISODate, b: ISODate): boolean {
   return a.slice(0, 7) === b.slice(0, 7)
 }
 
+/** A year and a month (1 to 12), for stepping through a calendar. */
+export interface MonthRef {
+  year: number
+  /** 1 to 12 */
+  month: number
+}
+
+export function monthRefOf(iso: ISODate): MonthRef {
+  const date = parseISODate(iso)
+  return { year: date.getFullYear(), month: date.getMonth() + 1 }
+}
+
+export function shiftMonth({ year, month }: MonthRef, by: number): MonthRef {
+  const index = year * 12 + (month - 1) + by
+  return { year: Math.floor(index / 12), month: (index % 12) + 1 }
+}
+
+export function firstOfMonth({ year, month }: MonthRef): ISODate {
+  assertMonth(month)
+  return toISODate(localDate(year, month, 1))
+}
+
+/** 'YYYY-MM' for a year and month: the key that ticks on monthly jobs are stored under. */
+export function monthKey({ year, month }: MonthRef): ISOMonth {
+  assertMonth(month)
+  return `${pad(year, 4)}-${pad(month, 2)}`
+}
+
+const ISO_MONTH_PATTERN = /^(\d{4})-(\d{2})$/
+
+/** True only for a real month written 'YYYY-MM' (so '2026-13' is false). */
+export function isISOMonth(value: unknown): value is ISOMonth {
+  if (typeof value !== 'string') return false
+  const match = ISO_MONTH_PATTERN.exec(value)
+  if (!match) return false
+  const month = Number(match[2])
+  return month >= 1 && month <= 12
+}
+
+/** The 'YYYY-MM' part of a date. */
+export function monthKeyOf(iso: ISODate): ISOMonth {
+  return monthKey(monthRefOf(iso))
+}
+
 // en-GB names, spelt out so output is identical in every browser.
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const MONTH_NAMES = [
@@ -139,4 +183,45 @@ export function formatWeekRange(weekStart: ISODate): string {
 export function formatMonthLabel(year: number, month: number): string {
   assertMonth(month)
   return `${MONTH_NAMES[month - 1]} ${year}`
+}
+
+/** 'October'. `month` is 1 to 12. */
+export function monthName(month: number): string {
+  assertMonth(month)
+  return MONTH_NAMES[month - 1] ?? ''
+}
+
+/**
+ * Months as a person would say them: 'March', 'March and April',
+ * 'March to May', 'February, April and June', 'October to February'
+ * (a run that wraps the year end stays one run). `months` are 1 to 12.
+ */
+export function formatMonths(months: readonly number[]): string {
+  const sorted = [...new Set(months)].sort((a, b) => a - b)
+  if (sorted.length === 0) return ''
+  if (sorted.length === 12) return 'All year'
+  // Split into runs of consecutive months.
+  const runs: number[][] = []
+  for (const month of sorted) {
+    const last = runs.at(-1)
+    if (last && last.at(-1) === month - 1) last.push(month)
+    else runs.push([month])
+  }
+  // A run ending in December joins one starting in January.
+  const first = runs[0]
+  const last = runs.at(-1)
+  if (runs.length > 1 && first && last && first[0] === 1 && last.at(-1) === 12) {
+    runs.pop()
+    runs[0] = [...last, ...first]
+  }
+  const names = runs.map((run) => {
+    const start = monthName(run[0] ?? 1)
+    const end = monthName(run.at(-1) ?? 1)
+    if (run.length === 1) return start
+    // 'March and April' on its own; 'March to April' when other runs follow, so the 'and's don't pile up.
+    if (run.length === 2 && runs.length === 1) return `${start} and ${end}`
+    return `${start} to ${end}`
+  })
+  if (names.length === 1) return names[0] ?? ''
+  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
 }

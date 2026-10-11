@@ -20,6 +20,7 @@ export function backupSummary(state: AppState): string {
     count(state.larder.length, 'thing in the larder', 'things in the larder', 'nothing in the larder'),
     count(meals, 'planned meal', 'planned meals', 'no planned meals'),
     count(state.myRecipes.length, 'recipe of your own', 'recipes of your own', 'no recipes of your own'),
+    count(state.myJobs.length, 'job of your own', 'jobs of your own', 'no jobs of your own'),
   ]
   return `It has ${new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(parts)}.`
 }

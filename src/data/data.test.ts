@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AISLES, ART_KEYS, COURSES, DIETS } from '../domain/types'
-import { CATALOGUE, INGREDIENTS, RECIPES, STARTER_LARDER } from './index'
+import { ALMANAC, CATALOGUE, CROP_GUIDES, INGREDIENTS, JOBS, RECIPES, STARTER_LARDER } from './index'
 
 const KEBAB_CASE = /^[a-z0-9]+(-[a-z0-9]+)*$/
 // The owner's house style forbids the em dash (U+2014) and the en dash (U+2013).
@@ -273,5 +273,12 @@ describe('catalogue', () => {
   it('is built from the same ingredients and recipes', () => {
     expect(CATALOGUE.recipes).toBe(RECIPES)
     expect([...CATALOGUE.ingredients.values()]).toEqual([...INGREDIENTS])
+  })
+})
+
+describe('almanac', () => {
+  it('is built from the same guides and jobs', () => {
+    expect(ALMANAC.jobs).toBe(JOBS)
+    expect([...ALMANAC.guides.values()]).toEqual([...CROP_GUIDES])
   })
 })

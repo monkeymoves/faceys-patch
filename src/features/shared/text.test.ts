@@ -46,6 +46,12 @@ describe('midSentence', () => {
   it('leaves a first word in capitals alone', () => {
     expect(midSentence('BBQ sauce')).toBe('BBQ sauce')
   })
+
+  it('keeps the capital on a name', () => {
+    expect(midSentence('Brussels sprouts')).toBe('Brussels sprouts')
+    expect(midSentence('French beans')).toBe('French beans')
+    expect(midSentence('Jerusalem artichokes')).toBe('Jerusalem artichokes')
+  })
 })
 
 describe('capitalise', () => {

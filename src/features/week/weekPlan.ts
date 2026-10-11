@@ -3,16 +3,18 @@ import {
   findRecipe,
   formatLongDate,
   hasKnownMeals,
-  parseISODate,
-  toISODate,
+  monthRefOf,
   weekDates,
   type ArtKey,
   type Catalogue,
   type HarvestItem,
   type ISODate,
   type MealPlan,
+  type MonthRef,
   type PlannedMeal,
 } from '../../domain'
+
+export { firstOfMonth, shiftMonth, type MonthRef } from '../../domain'
 
 export type FillState = { canFill: true; dates: ISODate[]; hint: string } | { canFill: false; reason: string }
 
@@ -73,26 +75,10 @@ export function fillOutcome(planned: number, wanted: number, patchEmpty: boolean
   }
 }
 
-export interface MonthRef {
-  year: number
-  /** 1 to 12 */
-  month: number
-}
-
 /** The month to show for a week: today's month if the week holds today, otherwise the month of its Thursday. */
 export function monthOfWeek(weekStart: ISODate, today: ISODate): MonthRef {
   const dates = weekDates(weekStart)
-  const anchor = parseISODate(dates.includes(today) ? today : addDays(weekStart, 3))
-  return { year: anchor.getFullYear(), month: anchor.getMonth() + 1 }
-}
-
-export function shiftMonth({ year, month }: MonthRef, by: number): MonthRef {
-  const index = year * 12 + (month - 1) + by
-  return { year: Math.floor(index / 12), month: (index % 12) + 1 }
-}
-
-export function firstOfMonth({ year, month }: MonthRef): ISODate {
-  return toISODate(new Date(year, month - 1, 1))
+  return monthRefOf(dates.includes(today) ? today : addDays(weekStart, 3))
 }
 
 /**

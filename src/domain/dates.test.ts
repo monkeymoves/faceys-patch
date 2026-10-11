@@ -1,14 +1,22 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   addDays,
+  firstOfMonth,
   formatLongDate,
   formatMonthLabel,
+  formatMonths,
   formatShortDay,
   formatWeekRange,
   isISODate,
+  isISOMonth,
   isSameMonth,
   monthGrid,
+  monthKey,
+  monthKeyOf,
+  monthName,
+  monthRefOf,
   parseISODate,
+  shiftMonth,
   startOfWeek,
   toISODate,
   todayISO,
@@ -281,5 +289,60 @@ describe('formatMonthLabel', () => {
 
   it('throws a RangeError for a month outside 1 to 12', () => {
     expect(() => formatMonthLabel(2026, 13)).toThrow(RangeError)
+  })
+})
+
+describe('month refs', () => {
+  it('reads the year and month of a date', () => {
+    expect(monthRefOf('2026-10-07')).toEqual({ year: 2026, month: 10 })
+  })
+
+  it('steps forwards and backwards across year ends', () => {
+    expect(shiftMonth({ year: 2026, month: 12 }, 1)).toEqual({ year: 2027, month: 1 })
+    expect(shiftMonth({ year: 2026, month: 1 }, -1)).toEqual({ year: 2025, month: 12 })
+    expect(shiftMonth({ year: 2026, month: 3 }, 14)).toEqual({ year: 2027, month: 5 })
+  })
+
+  it('gives the first of the month', () => {
+    expect(firstOfMonth({ year: 2026, month: 2 })).toBe('2026-02-01')
+  })
+
+  it('writes a month key with padding, and reads one off a date', () => {
+    expect(monthKey({ year: 2026, month: 3 })).toBe('2026-03')
+    expect(monthKeyOf('2026-10-07')).toBe('2026-10')
+    expect(() => monthKey({ year: 2026, month: 0 })).toThrow(RangeError)
+  })
+
+  it('recognises a month key and nothing else', () => {
+    expect(isISOMonth('2026-10')).toBe(true)
+    expect(isISOMonth('2026-13')).toBe(false)
+    expect(isISOMonth('2026-00')).toBe(false)
+    expect(isISOMonth('2026-10-07')).toBe(false)
+    expect(isISOMonth(202610)).toBe(false)
+  })
+})
+
+describe('monthName and formatMonths', () => {
+  it('names a month', () => {
+    expect(monthName(1)).toBe('January')
+    expect(() => monthName(13)).toThrow(RangeError)
+  })
+
+  it.each([
+    [[3], 'March'],
+    [[3, 4], 'March and April'],
+    [[3, 4, 5], 'March to May'],
+    [[2, 4, 6], 'February, April and June'],
+    [[1, 2, 10, 11, 12], 'October to February'],
+    [[12, 1], 'December and January'],
+    [[4, 5, 9, 10], 'April to May and September to October'],
+    [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], 'All year'],
+    [[], ''],
+  ])('%j reads as %s', (months, expected) => {
+    expect(formatMonths(months)).toBe(expected)
+  })
+
+  it('ignores order and repeats', () => {
+    expect(formatMonths([5, 3, 4, 3])).toBe('March to May')
   })
 })

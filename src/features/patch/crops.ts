@@ -47,7 +47,7 @@ export function growables(catalogue: Catalogue): Ingredient[] {
 export const monthOf = (today: ISODate) => parseISODate(today).getMonth() + 1
 
 /** 'October' */
-export function monthName(today: ISODate): string {
+export function monthNameOf(today: ISODate): string {
   const label = formatMonthLabel(parseISODate(today).getFullYear(), monthOf(today))
   return label.slice(0, label.lastIndexOf(' '))
 }

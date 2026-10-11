@@ -119,10 +119,11 @@ describe('TabBar', () => {
     expect(onSelect).toHaveBeenCalledWith('shop')
   })
 
-  it('lists the five tabs in order', () => {
+  it('lists the six tabs in order', () => {
     render(<TabBar tabs={MAIN_TABS} active="patch" onSelect={() => {}} />)
     expect(screen.getAllByRole('button').map((tab) => tab.textContent)).toEqual([
       'Patch',
+      'Grow',
       'Larder',
       'Cook',
       'Week',

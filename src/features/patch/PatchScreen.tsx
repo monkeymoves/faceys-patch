@@ -17,7 +17,7 @@ import { CropSheet } from './CropSheet'
 import {
   addedToPatch,
   artFor,
-  monthName,
+  monthNameOf,
   monthOf,
   patchCrops,
   seasonalPicks,
@@ -25,6 +25,7 @@ import {
   type Crop,
 } from './crops'
 import { PatchPicker } from './PatchPicker'
+import { PlotNudge } from './PlotNudge'
 import styles from './Patch.module.css'
 
 /** A crop just taken off, kept so "Undo" can put it back exactly as it was. */
@@ -113,6 +114,8 @@ export function PatchScreen() {
           {tookOffPatch(removed.name)}
         </Notice>
       )}
+
+      <PlotNudge />
 
       {crops.length === 0 ? (
         <EmptyPatch
@@ -217,7 +220,7 @@ function EmptyPatch({ onAddMore, onQuickAdd }: EmptyPatchProps) {
       {picks.length > 0 && (
         <section aria-labelledby={headingId} className={styles.group}>
           <h2 id={headingId} className={styles.groupHeading}>
-            In season in {monthName(today)}
+            In season in {monthNameOf(today)}
           </h2>
           <p className={styles.groupNote}>Tap one to put it on the patch.</p>
           <ul role="list" className={styles.tileGrid}>

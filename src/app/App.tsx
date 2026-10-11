@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
 import { CookScreen } from '../features/cook/CookScreen'
+import { GrowScreen } from '../features/grow/GrowScreen'
 import { LarderScreen } from '../features/larder/LarderScreen'
 import { PatchScreen } from '../features/patch/PatchScreen'
 import { SettingsSheet } from '../features/settings/SettingsSheet'
@@ -19,6 +20,7 @@ import { ViewedWeekProvider } from './viewedWeek'
 
 const SCREENS: Record<MainTabId, ComponentType> = {
   patch: PatchScreen,
+  grow: GrowScreen,
   larder: LarderScreen,
   cook: CookScreen,
   week: WeekScreen,
@@ -41,6 +43,7 @@ export function App() {
 
 const TITLES: Record<MainTabId, string> = {
   patch: "What's ready",
+  grow: 'On the plot',
   larder: 'Larder',
   cook: 'What to cook',
   week: "What's for dinner",

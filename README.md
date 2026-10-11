@@ -4,11 +4,16 @@
 
 ![Patch, Cook, Week and Shop screens](docs/screens.png)
 
-A meal planner for allotment holders and veg growers. Tell it what's ready on
-the plot and what's in the larder, and it suggests what to cook this week,
-plans the days, and writes the shopping list for anything you're missing.
+A meal planner and shed calendar for allotment holders and veg growers. Tell it
+what's ready on the plot and what's in the larder, and it suggests what to cook
+this week, plans the days, and writes the shopping list for anything you're
+missing. It also knows what to sow, plant and do on the plot each month, for
+UK growers, and lets you add your own jobs.
 
 - **Patch**: what you've picked or will pick soon, including "loads of it" gluts.
+- **Grow**: what to sow and plant this month, a growing guide for every crop, and the
+  jobs to do on the plot, month by month. Tick them off, put aside the ones that
+  aren't for your plot, and add your own (every year, or just once on a date).
 - **Larder**: what's in the cupboard and fridge.
 - **Cook**: 82 original recipes ranked by how much of your patch they use, plus your own.
 - **Week**: a calendar of dinners. "Fill my week" plans the empty days for you.

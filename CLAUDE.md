@@ -19,7 +19,7 @@ treat that file as a contract and don't change it without being asked.
 - Prettier-ish style: no semicolons, single quotes, 2-space indent, trailing commas.
 - Named exports only (no default exports, except where a tool requires one).
 - `src/domain` is pure TypeScript: no React, no DOM, no imports from `src/data`.
-  Reference data reaches it as a `Catalogue` argument.
+  Reference data reaches it as `Catalogue` and `Almanac` arguments.
 - Tests sit next to the code: `foo.ts` -> `foo.test.ts`. Test behaviour through
   public functions, not internals. UI tests query by role and accessible name.
 - CSS: plain CSS Modules (`Thing.module.css`) using tokens from
@@ -32,9 +32,10 @@ treat that file as a contract and don't change it without being asked.
 
 ## App layer (src/app), for building screens
 
-- `useStore()` from `src/app/useStore`: `{ state, dispatch, catalogue, problem, dismissProblem }`.
+- `useStore()` from `src/app/useStore`: `{ state, dispatch, catalogue, almanac, problem, dismissProblem }`.
   `catalogue` already includes the person's own recipes and ingredients. Always use it,
   never `CATALOGUE` from src/data directly, so their recipes behave like built-in ones.
+  `almanac` is the growing data (crop guides and built-in jobs); use it rather than `ALMANAC`.
 - `useSupplies()` / `useMatches()` from `src/app/hooks`: memoised inputs for the domain and
   the ranked recipe matches.
 - `useNavigation()` from `src/app/useNavigation`: `{ route, go }`. Routes live in the URL hash.
@@ -44,5 +45,7 @@ treat that file as a contract and don't change it without being asked.
   user input first (`LIMITS`, `myRecipeSchema`, `myIngredientSchema` from src/domain).
 - Contexts are split into a provider component file and a hook file (`store.tsx` +
   `useStore.ts`), because the lint rule for fast refresh forbids mixing them.
-- Screen tests: `renderWithApp(<Screen />, { state })` from `src/test/render` seeds state
-  through the real providers and returns `{ user, saved }` alongside the usual queries.
+- Screen tests: `renderWithApp(<Screen />, { state, almanac })` from `src/test/render` seeds
+  state through the real providers and returns `{ user, saved }` alongside the usual queries.
+  Pass the fixture `ALMANAC` from `src/domain/test-fixtures` when a test reads growing data,
+  so it doesn't move when the real advice is edited.

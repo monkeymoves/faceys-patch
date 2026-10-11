@@ -1,13 +1,16 @@
 import { useNavigation } from '../../app/useNavigation'
 import { useStore } from '../../app/useStore'
+import { useToday } from '../../app/useToday'
 import { Art } from '../../art/Art'
-import type { HarvestItem, IngredientId } from '../../domain'
+import { cropYear, hasActivity, type HarvestItem, type IngredientId } from '../../domain'
 import { Button } from '../../ui/Button'
 import { Checkbox } from '../../ui/Checkbox'
+import { MonthStrip } from '../../ui/MonthStrip'
 import { SegmentedControl } from '../../ui/SegmentedControl'
 import { Sheet } from '../../ui/Sheet'
+import { stripRows } from '../shared/growing'
 import { midSentence } from '../shared/text'
-import { patchCrops, STATUS_OPTIONS, type Crop } from './crops'
+import { monthOf, patchCrops, STATUS_OPTIONS, type Crop } from './crops'
 import styles from './Patch.module.css'
 
 export interface CropSheetProps {
@@ -36,9 +39,12 @@ interface CropDetailsProps {
 }
 
 function CropDetails({ crop, onClose, onRemoved }: CropDetailsProps) {
-  const { state, dispatch } = useStore()
+  const { state, dispatch, catalogue, almanac } = useStore()
   const { go } = useNavigation()
+  const today = useToday()
   const { id, name, art, status, glut } = crop
+  const ingredient = catalogue.ingredients.get(id)
+  const year = ingredient ? cropYear(ingredient, almanac) : undefined
 
   return (
     <div className={styles.crop}>
@@ -58,6 +64,12 @@ function CropDetails({ crop, onClose, onRemoved }: CropDetailsProps) {
         checked={glut}
         onCheckedChange={(next) => dispatch({ type: 'harvest/update', ingredientId: id, glut: next })}
       />
+      {year && hasActivity(year) && (
+        <div className={styles.cropYear}>
+          <h3 className={styles.cropYearHeading}>Its year</h3>
+          <MonthStrip rows={stripRows(year)} currentMonth={monthOf(today)} />
+        </div>
+      )}
       <div className={styles.cropActions}>
         <Button
           variant="secondary"
@@ -69,6 +81,17 @@ function CropDetails({ crop, onClose, onRemoved }: CropDetailsProps) {
           }}
         >
           See recipes with {midSentence(name)}
+        </Button>
+        <Button
+          variant="secondary"
+          icon="seedPacket"
+          fullWidth
+          onClick={() => {
+            onClose()
+            go({ tab: 'grow', crop: id })
+          }}
+        >
+          How to grow {midSentence(name)}
         </Button>
         <Button
           variant="ghost"

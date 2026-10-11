@@ -90,12 +90,25 @@ a hand-drawn ring around the active tab icon, a hand-drawn tick for
 checkboxes. Chips can use the uneven-radius trick
 (`border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px`) sparingly.
 
+## The crop calendar (MonthStrip)
+
+A crop's year is drawn like the chart on the back of a seed packet: twelve
+cells per row, one row each for sow under cover, sow outside, plant out and
+harvest, with runs of months joined into one hand-cut bar. Colours come from
+the `--mark-*` tokens (marigold for under cover, pale leaf for outside, leaf
+for planting, tomato for harvest) and are never the only cue: rows are
+labelled, the strip has a spoken version ("Sow under cover: February to
+April."), and the compact list version sits under a key. This month's column
+is washed marigold with its initial underlined.
+
 ## Layout
 
 - Mobile first, one column, generous spacing, touch targets at least 44px.
 - Content column max ~640px, centred on wide screens.
-- Bottom tab bar on phones (Patch, Larder, Cook, Week, Shop), each with its
-  own drawn icon: trowel, jar, pot, calendar page, basket. On wide screens
+- Bottom tab bar on phones (Patch, Grow, Larder, Cook, Week, Shop), each with
+  its own drawn icon: trowel, watering can, jar, pot, calendar page, basket.
+  Job kinds have icons too: seed packet (sow), trowel (plant), watering can
+  (tend), cloche (protect), basket (harvest), fork (prepare). On wide screens
   (>= 900px) the same tabs sit in a slim top header beside the wordmark.
 - Header: wordmark "Facey's Patch" on the left, settings button on the right.
 - Sheets: bottom sheet on phones, centred dialog on wide screens, built on

@@ -36,6 +36,12 @@
   /* Text on solid leaf or tomato */
   --on-solid: var(--card);
 
+  /* Crop calendar marks: never the only cue, every row is labelled or described. */
+  --mark-sow-in: var(--marigold);
+  --mark-sow-out: #a9c487;
+  --mark-plant: var(--leaf);
+  --mark-harvest: var(--tomato);
+
   /* Overlays */
   --scrim: color-mix(in srgb, var(--ink) 42%, transparent);
   --shadow-sheet: 0 -1px 0 color-mix(in srgb, var(--ink) 6%, transparent),

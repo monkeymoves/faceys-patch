@@ -188,6 +188,27 @@ describe('more than one copy open (another tab, or the installed app beside a br
     })
   })
 
+
+  it('keeps its jobs when an older copy of the app, which knows nothing of them, writes the saved data', () => {
+    const storage = memoryStorage()
+    const { result } = renderStore(storage)
+    act(() =>
+      result.current.dispatch({
+        type: 'myJobs/save',
+        job: { id: 'my-shed-a1b2c', title: 'Tidy the shed', note: '', kind: 'prepare', months: [10] },
+      }),
+    )
+    // An older copy's schema strips the job fields, so its save has none.
+    const { myJobs: _j, jobsDone: _d, hiddenJobs: _h, ...older } = { ...initialState(), larder: ['feta'] }
+    const value = JSON.stringify(older)
+    storage.setItem(STORAGE_KEY, value)
+    act(() => {
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY, newValue: value }))
+    })
+    expect(result.current.state.larder).toEqual(['feta'])
+    expect(result.current.state.myJobs.map((job) => job.id)).toEqual(['my-shed-a1b2c'])
+    expect((JSON.parse(storage.data.get(STORAGE_KEY) ?? '{}') as AppState).myJobs).toHaveLength(1)
+  })
   it('puts our data back if something else on the same site deletes it', () => {
     const storage = memoryStorage()
     const { result } = renderStore(storage)

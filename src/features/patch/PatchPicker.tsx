@@ -14,7 +14,7 @@ import { useAnnouncer } from '../../ui/useAnnouncer'
 import { findOrMakeIngredient } from '../shared/ingredients'
 import { matchesQuery, midSentence, plural } from '../shared/text'
 import { useResultsAnnouncement } from '../shared/useResultsAnnouncement'
-import { addedToPatch, growables, inSeason, monthName, monthOf, STATUS_OPTIONS, tookOffPatch } from './crops'
+import { addedToPatch, growables, inSeason, monthNameOf, monthOf, STATUS_OPTIONS, tookOffPatch } from './crops'
 import styles from './Patch.module.css'
 
 export interface PatchPickerProps {
@@ -93,7 +93,7 @@ function PickerBody() {
 
       {seasonal.length > 0 && (
         <ChipGroup
-          title={`In season in ${monthName(today)}`}
+          title={`In season in ${monthNameOf(today)}`}
           crops={seasonal}
           onPatch={onPatch}
           onChange={setOnPatch}

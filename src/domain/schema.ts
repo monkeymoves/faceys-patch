@@ -3,8 +3,8 @@ import { z } from 'zod'
 // zod probes for `new Function` to speed up parsing; our CSP forbids that, so
 // skip the probe rather than log a violation on every load.
 z.config({ jitless: true })
-import { isISODate } from './dates'
-import { AISLES, ART_KEYS, COURSES, DIETS, HARVEST_STATUSES, MY_ID_PREFIX, type AppState } from './types'
+import { isISODate, isISOMonth } from './dates'
+import { AISLES, ART_KEYS, COURSES, DIETS, HARVEST_STATUSES, JOB_KINDS, MY_ID_PREFIX, type AppState } from './types'
 
 /**
  * Size caps for everything stored, so a hostile or broken backup can't bloat
@@ -30,6 +30,12 @@ export const LIMITS = {
   myIngredients: 300,
   minutes: 9999,
   serves: 99,
+  /** Own jobs on the plot. */
+  myJobs: 300,
+  jobTitleLength: 80,
+  jobNoteLength: 320,
+  /** Months with ticked-off jobs kept: twenty years. */
+  doneMonths: 240,
 } as const
 
 const isUnique = <T>(key: (item: T) => string) => (items: readonly T[]) =>
@@ -39,6 +45,7 @@ const byId = (item: { id: string }) => item.id
 const sizeAtMost = (max: number) => (record: object) => Object.keys(record).length <= max
 
 const isoDate = z.string().refine(isISODate, { error: 'Not a calendar date' })
+const isoMonth = z.string().refine(isISOMonth, { error: 'Not a calendar month' })
 /** Lower-case letters, digits and hyphens only: every id we make looks like this, and it keeps ids inert anywhere they end up (keys, selectors, URLs). */
 const id = z
   .string()
@@ -103,6 +110,30 @@ export const myIngredientSchema = z
     error: 'A growable ingredient needs a drawing',
   })
 
+/** Months of the year, 1 to 12, each at most once. */
+const months = z
+  .array(z.int().min(1).max(12))
+  .max(12)
+  .refine(isUnique((value: number) => String(value)), { error: 'Repeated month' })
+
+export const myJobSchema = z
+  .object({
+    id: myId,
+    title: nonBlank(LIMITS.jobTitleLength),
+    note: z.string().max(LIMITS.jobNoteLength),
+    kind: z.enum(JOB_KINDS),
+    months,
+    on: isoDate.optional(),
+  })
+  .refine((job) => (job.months.length > 0) !== (job.on !== undefined), {
+    error: 'A job comes round in some months every year, or happens once on a date, not both or neither',
+  })
+
+const jobIds = z
+  .array(id)
+  .max(LIMITS.listItems)
+  .refine(isUnique((value: string) => value), { error: 'Duplicate id' })
+
 export const appStateSchema = z.object({
   version: z.literal(1),
   harvest: z
@@ -127,6 +158,16 @@ export const appStateSchema = z.object({
     .max(LIMITS.myIngredients)
     .refine(isUnique(byId), { error: 'Duplicate ingredient' })
     .default([]),
+  myJobs: z
+    .array(myJobSchema)
+    .max(LIMITS.myJobs)
+    .refine(isUnique(byId), { error: 'Duplicate job' })
+    .default([]),
+  jobsDone: z
+    .record(isoMonth, jobIds)
+    .refine(sizeAtMost(LIMITS.doneMonths), { error: 'Too many months of ticked jobs' })
+    .default({}),
+  hiddenJobs: jobIds.default([]),
 }) satisfies z.ZodType<AppState>
 
 export function isValidState(value: unknown): value is AppState {

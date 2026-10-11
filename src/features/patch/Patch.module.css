@@ -31,6 +31,29 @@
   margin-top: var(--space-4);
 }
 
+/* The jobs nudge: how many are waiting on the plot this month. */
+
+.nudge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  background-color: var(--paper-2);
+}
+
+.nudgeIcon {
+  flex-shrink: 0;
+  color: var(--leaf-deep);
+}
+
+.nudgeText {
+  flex: 1 1 10rem;
+  font-weight: var(--weight-medium);
+}
+
 .cookLink {
   display: flex;
   justify-content: center;
@@ -54,6 +77,15 @@
 .fullSegments {
   display: flex;
   width: 100%;
+}
+
+.cropYear {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.cropYearHeading {
+  font-size: var(--text-base);
 }
 
 .cropActions {

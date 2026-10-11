@@ -9,9 +9,10 @@ export interface TabItem<T extends string = string> {
   icon: IconName
 }
 
-/** The app's five tabs, in order, with their drawn icons. */
+/** The app's six tabs, in order, with their drawn icons. */
 export const MAIN_TABS = [
   { id: 'patch', label: 'Patch', icon: 'trowel' },
+  { id: 'grow', label: 'Grow', icon: 'wateringCan' },
   { id: 'larder', label: 'Larder', icon: 'jar' },
   { id: 'cook', label: 'Cook', icon: 'pot' },
   { id: 'week', label: 'Week', icon: 'calendar' },

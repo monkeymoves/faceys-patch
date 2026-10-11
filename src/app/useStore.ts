@@ -1,5 +1,5 @@
 import { createContext, use } from 'react'
-import type { Action, AppState, Catalogue, LoadNotice } from '../domain'
+import type { Action, Almanac, AppState, Catalogue, LoadNotice } from '../domain'
 
 /** Something the person needs to know about their saved data. */
 export type StorageProblem = LoadNotice | 'save-quota' | 'save-failed'
@@ -9,6 +9,8 @@ export interface Store {
   dispatch: (action: Action) => void
   /** Built-in recipes and ingredients plus the person's own. */
   catalogue: Catalogue
+  /** When to sow and plant each crop, and the built-in jobs on the plot. */
+  almanac: Almanac
   problem: StorageProblem | undefined
   dismissProblem: () => void
   /** After unreadable data was set aside on load: reads that kept copy, for downloading. */

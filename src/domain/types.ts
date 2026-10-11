@@ -8,6 +8,9 @@
 /** A local calendar date, always formatted 'YYYY-MM-DD'. Never a timestamp. */
 export type ISODate = string
 
+/** A calendar month, always formatted 'YYYY-MM'. */
+export type ISOMonth = string
+
 /** Kebab-case, singular, stable forever once shipped (it is stored on devices). */
 export type IngredientId = string
 export type RecipeId = string
@@ -140,6 +143,54 @@ export interface Catalogue {
 }
 
 // ---------------------------------------------------------------------------
+// Growing: when to sow and plant, and jobs on the plot (reference data in src/data)
+// ---------------------------------------------------------------------------
+
+/**
+ * How and when a crop gets going in the UK. Months are 1 = January. A crop may
+ * have any mix of the three: sown under cover then planted out (tomatoes),
+ * sown straight in the ground (carrots), or planted as sets, tubers, crowns,
+ * canes or bought plants (onions, potatoes, rhubarb, raspberries). Harvest
+ * months live on the Ingredient.
+ */
+export interface CropGuide {
+  ingredientId: IngredientId
+  /** Sow under cover: windowsill, greenhouse, cold frame or propagator. */
+  sowIndoors?: readonly number[]
+  /** Sow straight into the ground outside. */
+  sowOutdoors?: readonly number[]
+  /** Put plants in the ground: seedlings raised indoors, bought plants, sets, tubers, crowns or canes. */
+  plantOut?: readonly number[]
+  /** Two to four plain sentences: site, spacing, watering, pests, pitfalls. */
+  tips: readonly string[]
+}
+
+/** What sort of job it is. Drives the drawn icon and the grouping on the Grow screen. */
+export const JOB_KINDS = ['sow', 'plant', 'tend', 'protect', 'harvest', 'prepare'] as const
+
+export type JobKind = (typeof JOB_KINDS)[number]
+
+/** A built-in job on the plot. Ids are stable forever: ticks and hides are stored against them. */
+export interface Job {
+  id: string
+  /** Short and imperative: 'Mulch empty beds for winter'. */
+  title: string
+  /** One to three plain sentences of advice. */
+  note: string
+  kind: JobKind
+  /** Months it comes round, every year. */
+  months: readonly number[]
+  /** The crops it is about, when it is about particular ones. The first with a drawing is shown. */
+  crops?: readonly IngredientId[]
+}
+
+/** Read-only reference data about growing, injected into domain functions like Catalogue. */
+export interface Almanac {
+  guides: ReadonlyMap<IngredientId, CropGuide>
+  jobs: readonly Job[]
+}
+
+// ---------------------------------------------------------------------------
 // User state (persisted on the device)
 // ---------------------------------------------------------------------------
 
@@ -167,8 +218,21 @@ export interface PlannedMeal {
 /** Meals keyed by date. A missing key and an empty array both mean "nothing planned". */
 export type MealPlan = Readonly<Record<ISODate, readonly PlannedMeal[]>>
 
-/** Ids of user-written recipes and user-added ingredients start with this, so they never clash with built-in ids. */
+/** Ids of user-written recipes, ingredients and jobs start with this, so they never clash with built-in ids. */
 export const MY_ID_PREFIX = 'my-'
+
+/**
+ * A job the person added. Either comes round in `months` every year, or
+ * happens just once on `on` (then `months` is empty).
+ */
+export interface MyJob {
+  id: string
+  title: string
+  note: string
+  kind: JobKind
+  months: readonly number[]
+  on?: ISODate
+}
 
 export interface AppState {
   version: 1
@@ -186,6 +250,15 @@ export interface AppState {
    * have empty harvestMonths.
    */
   myIngredients: readonly Ingredient[]
+  /** Jobs the person added. Ids start with MY_ID_PREFIX. */
+  myJobs: readonly MyJob[]
+  /**
+   * Jobs ticked off, keyed by the month they were ticked in ('YYYY-MM'), so a
+   * yearly job comes back untouched next year. Built-in and own ids alike.
+   */
+  jobsDone: Readonly<Record<ISOMonth, readonly string[]>>
+  /** Built-in jobs the person has put aside as not for their plot. */
+  hiddenJobs: readonly string[]
 }
 
 // ---------------------------------------------------------------------------

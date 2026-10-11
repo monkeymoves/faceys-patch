@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { HarvestItem, Ingredient } from '../../domain'
+import { ALMANAC } from '../../domain/test-fixtures'
 import { announced, shown } from '../../test/live'
 import { renderWithApp } from '../../test/render'
 import { PatchScreen } from './PatchScreen'
@@ -166,6 +167,18 @@ describe('PatchScreen', () => {
       )
     })
 
+    it("shows the crop's year and links to how to grow it", async () => {
+      const { user } = renderWithApp(<PatchScreen />, { state: { harvest: [crop('courgette')] }, almanac: ALMANAC })
+      await user.click(screen.getByRole('button', { name: 'Courgettes, ready now' }))
+      const sheet = screen.getByRole('dialog', { name: 'Courgettes' })
+      expect(within(sheet).getByRole('img')).toHaveAccessibleName(
+        'Sow under cover: April and May. Sow outside: May and June. Plant: May and June. Harvest: June to October.',
+      )
+      await user.click(within(sheet).getByRole('button', { name: 'How to grow courgettes' }))
+      expect(window.location.hash).toBe('#/grow?crop=courgette')
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
     it('goes to Cook with recipes using that crop', async () => {
       const { user } = renderWithApp(<PatchScreen />, { state: { harvest: [crop('courgette')] } })
       await user.click(screen.getByRole('button', { name: 'Courgettes, ready now' }))
@@ -173,6 +186,23 @@ describe('PatchScreen', () => {
 
       expect(window.location.hash).toBe('#/cook?with=courgette')
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('the jobs nudge', () => {
+    it('says how many jobs are waiting on the plot this month, and goes to Grow', async () => {
+      const { user } = renderWithApp(<PatchScreen />, { almanac: ALMANAC })
+      expect(screen.getByText('3 jobs to do on the plot this month')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'See the jobs' }))
+      expect(window.location.hash).toBe('#/grow')
+    })
+
+    it('says nothing when every job is done', () => {
+      renderWithApp(<PatchScreen />, {
+        almanac: ALMANAC,
+        state: { jobsDone: { '2026-10': ['net-brassicas', 'check-stores', 'mulch-beds'] } },
+      })
+      expect(screen.queryByRole('button', { name: 'See the jobs' })).not.toBeInTheDocument()
     })
   })
 
