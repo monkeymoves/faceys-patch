@@ -2,7 +2,7 @@
 
 **Live: https://monkeymoves.github.io/faceys-patch/**
 
-![Patch, Cook, Week and Shop screens](docs/screens.png)
+![Patch, Grow, Cook, Week and Shop screens](docs/screens.png)
 
 A meal planner and shed calendar for allotment holders and veg growers. Tell it
 what's ready on the plot and what's in the larder, and it suggests what to cook
